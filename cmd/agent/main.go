@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"os"
@@ -10,119 +11,107 @@ import (
 	"runtime"
 	"syscall"
 	"time"
+
+	"github.com/region23/go-musthave-devops/internal/metrics"
 )
 
-type gauge float64
-type counter int64
-
-type Metric struct {
-	Alloc         gauge
-	BuckHashSys   gauge
-	Frees         gauge
-	GCCPUFraction gauge
-	GCSys         gauge
-	HeapAlloc     gauge
-	HeapIdle      gauge
-	HeapInuse     gauge
-	HeapObjects   gauge
-	HeapReleased  gauge
-	HeapSys       gauge
-	LastGC        gauge
-	Lookups       gauge
-	MCacheInuse   gauge
-	MCacheSys     gauge
-	MSpanInuse    gauge
-	MSpanSys      gauge
-	Mallocs       gauge
-	NextGC        gauge
-	NumForcedGC   gauge
-	NumGC         gauge
-	OtherSys      gauge
-	PauseTotalNs  gauge
-	StackInuse    gauge
-	StackSys      gauge
-	Sys           gauge
-	TotalAlloc    gauge
-	PollCount     counter
-	RandomValue   gauge
-}
-
-func getMetrics(curMetric Metric) Metric {
+func getMetrics(curMetric metrics.Metric) metrics.Metric {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
-	curMetric.Alloc = gauge(memStats.Alloc)
-	curMetric.BuckHashSys = gauge(memStats.BuckHashSys)
-	curMetric.Frees = gauge(memStats.Frees)
-	curMetric.GCCPUFraction = gauge(memStats.GCCPUFraction)
-	curMetric.GCSys = gauge(memStats.GCSys)
-	curMetric.HeapAlloc = gauge(memStats.HeapAlloc)
-	curMetric.HeapIdle = gauge(memStats.HeapIdle)
-	curMetric.HeapInuse = gauge(memStats.HeapInuse)
-	curMetric.HeapObjects = gauge(memStats.HeapObjects)
-	curMetric.HeapReleased = gauge(memStats.HeapReleased)
-	curMetric.HeapSys = gauge(memStats.HeapSys)
-	curMetric.LastGC = gauge(memStats.LastGC)
-	curMetric.Lookups = gauge(memStats.Lookups)
-	curMetric.MCacheInuse = gauge(memStats.MCacheInuse)
-	curMetric.MCacheSys = gauge(memStats.MCacheSys)
-	curMetric.MSpanInuse = gauge(memStats.MSpanInuse)
-	curMetric.MSpanSys = gauge(memStats.MSpanSys)
-	curMetric.Mallocs = gauge(memStats.Mallocs)
-	curMetric.NextGC = gauge(memStats.NextGC)
-	curMetric.NumForcedGC = gauge(memStats.NumForcedGC)
-	curMetric.NumGC = gauge(memStats.NumGC)
-	curMetric.OtherSys = gauge(memStats.OtherSys)
-	curMetric.PauseTotalNs = gauge(memStats.PauseTotalNs)
-	curMetric.StackInuse = gauge(memStats.StackInuse)
-	curMetric.StackSys = gauge(memStats.StackSys)
-	curMetric.Sys = gauge(memStats.Sys)
-	curMetric.TotalAlloc = gauge(memStats.TotalAlloc)
+	curMetric.Alloc = metrics.Gauge(memStats.Alloc)
+	curMetric.BuckHashSys = metrics.Gauge(memStats.BuckHashSys)
+	curMetric.Frees = metrics.Gauge(memStats.Frees)
+	curMetric.GCCPUFraction = metrics.Gauge(memStats.GCCPUFraction)
+	curMetric.GCSys = metrics.Gauge(memStats.GCSys)
+	curMetric.HeapAlloc = metrics.Gauge(memStats.HeapAlloc)
+	curMetric.HeapIdle = metrics.Gauge(memStats.HeapIdle)
+	curMetric.HeapInuse = metrics.Gauge(memStats.HeapInuse)
+	curMetric.HeapObjects = metrics.Gauge(memStats.HeapObjects)
+	curMetric.HeapReleased = metrics.Gauge(memStats.HeapReleased)
+	curMetric.HeapSys = metrics.Gauge(memStats.HeapSys)
+	curMetric.LastGC = metrics.Gauge(memStats.LastGC)
+	curMetric.Lookups = metrics.Gauge(memStats.Lookups)
+	curMetric.MCacheInuse = metrics.Gauge(memStats.MCacheInuse)
+	curMetric.MCacheSys = metrics.Gauge(memStats.MCacheSys)
+	curMetric.MSpanInuse = metrics.Gauge(memStats.MSpanInuse)
+	curMetric.MSpanSys = metrics.Gauge(memStats.MSpanSys)
+	curMetric.Mallocs = metrics.Gauge(memStats.Mallocs)
+	curMetric.NextGC = metrics.Gauge(memStats.NextGC)
+	curMetric.NumForcedGC = metrics.Gauge(memStats.NumForcedGC)
+	curMetric.NumGC = metrics.Gauge(memStats.NumGC)
+	curMetric.OtherSys = metrics.Gauge(memStats.OtherSys)
+	curMetric.PauseTotalNs = metrics.Gauge(memStats.PauseTotalNs)
+	curMetric.StackInuse = metrics.Gauge(memStats.StackInuse)
+	curMetric.StackSys = metrics.Gauge(memStats.StackSys)
+	curMetric.Sys = metrics.Gauge(memStats.Sys)
+	curMetric.TotalAlloc = metrics.Gauge(memStats.TotalAlloc)
 
 	s1 := rand.NewSource(time.Now().UnixNano())
 	r1 := rand.New(s1)
-	curMetric.RandomValue = gauge(r1.Float64())
+	curMetric.RandomValue = metrics.Gauge(r1.Float64())
 	curMetric.PollCount = curMetric.PollCount + 1
 
 	return curMetric
 }
 
-func sendMetric(mType string, mName string, mValue string) (*http.Request, error) {
+func sendMetric(mType string, mName string, mValue string) error {
 	//fmt.Printf("%v | %v | %v\n", mType, mName, mValue)
 	url := fmt.Sprintf("http://127.0.0.1:8080/update/%v/%v/%v", mType, mName, mValue)
 	request, err := http.NewRequest(http.MethodPost, url, nil)
 	request.Header.Set("Content-Type", "text/plain")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return request, nil
+	client := &http.Client{}
+	// отправляем запрос
+	response, err := client.Do(request)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// печатаем код ответа
+	fmt.Println("Статус-код ", response.Status)
+	defer response.Body.Close()
+	// читаем поток из тела ответа
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+	// и печатаем его
+	fmt.Println(string(body))
+
+	return nil
 }
 
-func report(curMetric Metric) {
+func report(curMetric metrics.Metric) metrics.Metric {
 	var mType, mName, mValue string
 	v := reflect.ValueOf(curMetric)
 	typeOfS := v.Type()
 	for i := 0; i < v.NumField(); i++ {
 		switch v.Field(i).Interface().(type) {
-		case gauge:
+		case metrics.Gauge:
 			mType = "gauge"
-		case counter:
+		case metrics.Counter:
 			mType = "counter"
 		}
 
 		mValue = fmt.Sprintf("%v", v.Field(i).Interface())
 		mName = fmt.Sprintf("%v", typeOfS.Field(i).Name)
 
-		_, err := sendMetric(mType, mName, mValue)
+		err := sendMetric(mType, mName, mValue)
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
+
+	curMetric.PollCount = 1
+	return curMetric
 }
 
 func main() {
-	var curMetric Metric
+	var curMetric metrics.Metric
 	curMetric = getMetrics(curMetric)
 
 	osSigChan := make(chan os.Signal, 1)
@@ -135,7 +124,7 @@ func main() {
 		case <-pollInterval.C:
 			curMetric = getMetrics(curMetric)
 		case <-reportInterval.C:
-			report(curMetric)
+			curMetric = report(curMetric)
 		case <-osSigChan:
 			os.Exit(0)
 		}
