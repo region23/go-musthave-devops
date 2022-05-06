@@ -5,14 +5,21 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
+	"path"
 	"reflect"
 	"runtime"
 	"syscall"
 	"time"
 
 	"github.com/region23/go-musthave-devops/internal/metrics"
+)
+
+const (
+	pollInterval = 2 * time.Second
+	pollDuration = 10 * time.Second
 )
 
 func getMetrics(curMetric metrics.Metric) metrics.Metric {
@@ -50,15 +57,20 @@ func getMetrics(curMetric metrics.Metric) metrics.Metric {
 	s1 := rand.NewSource(time.Now().UnixNano())
 	r1 := rand.New(s1)
 	curMetric.RandomValue = metrics.Gauge(r1.Float64())
-	curMetric.PollCount = curMetric.PollCount + 1
+	curMetric.PollCount += 1
 
 	return curMetric
 }
 
+// Отправляем метрику на сервер
 func sendMetric(mType string, mName string, mValue string) error {
 	//fmt.Printf("%v | %v | %v\n", mType, mName, mValue)
-	url := fmt.Sprintf("http://127.0.0.1:8080/update/%v/%v/%v", mType, mName, mValue)
-	request, err := http.NewRequest(http.MethodPost, url, nil)
+	u := url.URL{
+		Scheme: "http",
+		Host:   "127.0.0.1:8080",
+		Path:   path.Join(mType, mName, mValue),
+	}
+	request, err := http.NewRequest(http.MethodPost, u.String(), nil)
 	request.Header.Set("Content-Type", "text/plain")
 	if err != nil {
 		return err
@@ -68,7 +80,7 @@ func sendMetric(mType string, mName string, mValue string) error {
 	// отправляем запрос
 	response, err := client.Do(request)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 
 	// печатаем код ответа
@@ -85,6 +97,7 @@ func sendMetric(mType string, mName string, mValue string) error {
 	return nil
 }
 
+// Отправка метрик на сервер
 func report(curMetric metrics.Metric) metrics.Metric {
 	var mType, mName, mValue string
 	v := reflect.ValueOf(curMetric)
@@ -117,13 +130,13 @@ func main() {
 	osSigChan := make(chan os.Signal, 1)
 	signal.Notify(osSigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	pollInterval := time.NewTicker(2 * time.Second)
-	reportInterval := time.NewTicker(10 * time.Second)
+	pollTick := time.NewTicker(pollInterval)
+	reportTick := time.NewTicker(pollDuration)
 	for {
 		select {
-		case <-pollInterval.C:
+		case <-pollTick.C:
 			curMetric = getMetrics(curMetric)
-		case <-reportInterval.C:
+		case <-reportTick.C:
 			curMetric = report(curMetric)
 		case <-osSigChan:
 			os.Exit(0)
