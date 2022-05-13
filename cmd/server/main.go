@@ -11,7 +11,7 @@ import (
 func main() {
 	repository := storage.NewInMemory()
 	srv := server.New(repository)
+	srv.MountHandlers()
 
-	http.HandleFunc("/", srv.UpdateHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", srv.Router))
 }

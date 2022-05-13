@@ -2,11 +2,6 @@ package storage
 
 import "strconv"
 
-type Metric struct {
-	metricType  string
-	metricValue string
-}
-
 type InMemory struct {
 	m map[string]Metric
 }
@@ -29,7 +24,7 @@ func (s *InMemory) Put(key string, metricType string, value string) error {
 		//
 		if key == "PollCount" {
 			if newValue, err := strconv.Atoi(value); err == nil {
-				if curValue, err := strconv.Atoi(curMetric.metricValue); err == nil {
+				if curValue, err := strconv.Atoi(curMetric.MetricValue); err == nil {
 					value = strconv.Itoa(curValue + newValue)
 				}
 			}
@@ -37,7 +32,12 @@ func (s *InMemory) Put(key string, metricType string, value string) error {
 			return ErrAlreadyExists
 		}
 	}
-	metric := Metric{metricType: metricType, metricValue: value}
+	metric := Metric{MetricType: metricType, MetricValue: value}
 	s.m[key] = metric
 	return nil
+}
+
+// All values in map
+func (s *InMemory) All() map[string]Metric {
+	return s.m
 }
