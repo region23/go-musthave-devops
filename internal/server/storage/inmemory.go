@@ -1,5 +1,7 @@
 package storage
 
+import "strconv"
+
 type Metric struct {
 	metricType  string
 	metricValue string
@@ -23,8 +25,17 @@ func (s *InMemory) Get(key string) (Metric, error) {
 }
 
 func (s *InMemory) Put(key string, metricType string, value string) error {
-	if _, ok := s.m[key]; ok {
-		return ErrAlreadyExists
+	if curMetric, ok := s.m[key]; ok {
+		//
+		if key == "PollCount" {
+			if newValue, err := strconv.Atoi(value); err == nil {
+				if curValue, err := strconv.Atoi(curMetric.metricValue); err == nil {
+					value = strconv.Itoa(curValue + newValue)
+				}
+			}
+		} else {
+			return ErrAlreadyExists
+		}
 	}
 	metric := Metric{metricType: metricType, metricValue: value}
 	s.m[key] = metric
