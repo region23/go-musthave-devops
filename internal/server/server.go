@@ -36,7 +36,7 @@ func (s *Server) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		if splittedUrl[2] == "gauge" || splittedUrl[2] == "counter" {
 			err := s.repository.Put(splittedUrl[3], splittedUrl[2], splittedUrl[4])
 			if err != nil {
-				http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %s", err.Error()), http.StatusBadRequest)
+				http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
 				return
 			}
 		}
