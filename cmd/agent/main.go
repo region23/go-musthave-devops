@@ -68,7 +68,7 @@ func sendMetric(mType string, mName string, mValue string) error {
 	u := url.URL{
 		Scheme: "http",
 		Host:   "127.0.0.1:8080",
-		Path:   path.Join(mType, mName, mValue),
+		Path:   path.Join("update", mType, mName, mValue),
 	}
 	request, err := http.NewRequest(http.MethodPost, u.String(), nil)
 	request.Header.Set("Content-Type", "text/plain")

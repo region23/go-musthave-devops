@@ -28,10 +28,9 @@ func (s *InMemory) Put(key string, metricType string, value string) error {
 					value = strconv.Itoa(curValue + newValue)
 				}
 			}
-		} else {
-			return ErrAlreadyExists
 		}
 	}
+
 	metric := Metric{MetricType: metricType, MetricValue: value}
 	s.m[key] = metric
 	return nil
