@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -39,13 +40,30 @@ func (s *Server) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	metricName := chi.URLParam(r, "metricName")
 	metricValue := chi.URLParam(r, "metricValue")
 
-	// write metric to repository
 	if metricType == "gauge" || metricType == "counter" {
+		if metricType == "gauge" {
+			if _, err := strconv.ParseFloat(metricValue, 64); err != nil {
+				http.Error(w, fmt.Sprintf("Неверное значение метрики: %v", err.Error()), http.StatusBadRequest)
+				return
+			}
+		}
+
+		if metricType == "counter" {
+			if _, err := strconv.ParseInt(metricValue, 0, 64); err != nil {
+				http.Error(w, fmt.Sprintf("Неверное значение метрики: %v", err.Error()), http.StatusBadRequest)
+				return
+			}
+		}
+
+		// write metric to repository
 		err := s.repository.Put(metricName, metricType, metricValue)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
 			return
 		}
+	} else {
+		http.Error(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
+		return
 	}
 
 	// response answer
