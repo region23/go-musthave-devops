@@ -26,6 +26,7 @@ func New(repository storage.Repository) *Server {
 func (s *Server) MountHandlers() {
 	// Mount all Middleware here
 	s.Router.Use(middleware.Logger)
+	s.Router.Use(middleware.StripSlashes)
 
 	// Mount all handlers here
 	s.Router.Get("/", s.AllMetricsHandler)

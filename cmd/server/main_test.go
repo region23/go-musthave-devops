@@ -7,6 +7,7 @@ import (
 
 	"github.com/region23/go-musthave-devops/internal/server"
 	"github.com/region23/go-musthave-devops/internal/server/storage"
+	"github.com/stretchr/testify/require"
 )
 
 // executeRequest, creates a new ResponseRecorder
@@ -31,17 +32,17 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 func TestUnknownHandlers(t *testing.T) {
 	tests := []struct {
 		name           string
-		endpointUrl    string
+		endpointURL    string
 		wantStatusCode int
 	}{
 		{
 			name:           "update_invalid_type",
-			endpointUrl:    "/update/unknown/testCounter/100",
+			endpointURL:    "/update/unknown/testCounter/100",
 			wantStatusCode: http.StatusNotImplemented,
 		},
 		{
 			name:           "update_invalid_method",
-			endpointUrl:    "/updater/counter/testCounter/100",
+			endpointURL:    "/updater/counter/testCounter/100",
 			wantStatusCode: http.StatusNotFound,
 		},
 	}
@@ -53,7 +54,7 @@ func TestUnknownHandlers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, tt.endpointUrl, nil)
+			request := httptest.NewRequest(http.MethodPost, tt.endpointURL, nil)
 			// Execute Request
 			response := executeRequest(request, srv)
 
@@ -66,22 +67,22 @@ func TestUnknownHandlers(t *testing.T) {
 func TestGaugeHandlers(t *testing.T) {
 	tests := []struct {
 		name           string
-		endpointUrl    string
+		endpointURL    string
 		wantStatusCode int
 	}{
 		{
 			name:           "invalid_value",
-			endpointUrl:    "/update/gauge/testGauge/none",
+			endpointURL:    "/update/gauge/testGauge/none",
 			wantStatusCode: http.StatusBadRequest,
 		},
 		{
 			name:           "without_id",
-			endpointUrl:    "/update/gauge/",
+			endpointURL:    "/update/gauge/",
 			wantStatusCode: http.StatusNotFound,
 		},
 		{
 			name:           "update",
-			endpointUrl:    "/update/gauge/testGauge/100",
+			endpointURL:    "/update/gauge/testGauge/100",
 			wantStatusCode: http.StatusOK,
 		},
 	}
@@ -93,7 +94,7 @@ func TestGaugeHandlers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, tt.endpointUrl, nil)
+			request := httptest.NewRequest(http.MethodPost, tt.endpointURL, nil)
 			// Execute Request
 			response := executeRequest(request, srv)
 
@@ -106,22 +107,22 @@ func TestGaugeHandlers(t *testing.T) {
 func TestCounterHandlers(t *testing.T) {
 	tests := []struct {
 		name           string
-		endpointUrl    string
+		endpointURL    string
 		wantStatusCode int
 	}{
 		{
 			name:           "invalid_value",
-			endpointUrl:    "/update/counter/testCounter/none",
+			endpointURL:    "/update/counter/testCounter/none",
 			wantStatusCode: http.StatusBadRequest,
 		},
 		{
 			name:           "without_id",
-			endpointUrl:    "/update/counter/",
+			endpointURL:    "/update/counter/",
 			wantStatusCode: http.StatusNotFound,
 		},
 		{
 			name:           "update",
-			endpointUrl:    "/update/counter/testCounter/100",
+			endpointURL:    "/update/counter/testCounter/100",
 			wantStatusCode: http.StatusOK,
 		},
 	}
@@ -133,12 +134,126 @@ func TestCounterHandlers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, tt.endpointUrl, nil)
+			request := httptest.NewRequest(http.MethodPost, tt.endpointURL, nil)
 			// Execute Request
 			response := executeRequest(request, srv)
 
 			// Check the response code
 			checkResponseCode(t, tt.wantStatusCode, response.Code)
+		})
+	}
+}
+
+func TestCounter(t *testing.T) {
+	tests := []struct {
+		name       string
+		metricName string
+		value      string
+		onlyValue  bool
+	}{
+		{
+			name:       "update_sequence #1",
+			metricName: "testSetGet33",
+			value:      "527",
+			onlyValue:  false,
+		},
+		{
+			name:       "update_sequence #2",
+			metricName: "testSetGet33",
+			value:      "455",
+			onlyValue:  false,
+		},
+		{
+			name:       "update_sequence #3",
+			metricName: "testSetGet33",
+			value:      "187",
+			onlyValue:  false,
+		},
+		{
+			name:       "get_unknown",
+			metricName: "testUnknown129",
+			onlyValue:  true,
+		},
+	}
+
+	// Create a New Server Struct
+	repository := storage.NewInMemory()
+	srv := server.New(repository)
+	srv.MountHandlers()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if !tt.onlyValue {
+				request := httptest.NewRequest(http.MethodPost, "/update/counter/"+tt.metricName+"/"+tt.value, nil)
+				// Execute Request
+				executeRequest(request, srv)
+				// Check the response code
+				request2 := httptest.NewRequest(http.MethodGet, "/value/counter/"+tt.metricName, nil)
+				response := executeRequest(request2, srv)
+				require.Equal(t, tt.value, response.Body.String())
+			} else {
+				request2 := httptest.NewRequest(http.MethodGet, "/value/counter/"+tt.metricName, nil)
+				response := executeRequest(request2, srv)
+				checkResponseCode(t, http.StatusNotFound, response.Code)
+			}
+
+		})
+	}
+}
+
+func TestGauge(t *testing.T) {
+	tests := []struct {
+		name       string
+		metricName string
+		value      string
+		onlyValue  bool
+	}{
+		{
+			name:       "update_sequence #1",
+			metricName: "testSetGet134",
+			value:      "65637.019",
+			onlyValue:  false,
+		},
+		{
+			name:       "update_sequence #2",
+			metricName: "testSetGet134",
+			value:      "156519.255",
+			onlyValue:  false,
+		},
+		{
+			name:       "update_sequence #3",
+			metricName: "testSetGet134",
+			value:      "96969.519",
+			onlyValue:  false,
+		},
+		{
+			name:       "get_unknown",
+			metricName: "testUnknown164",
+			onlyValue:  true,
+		},
+	}
+
+	// Create a New Server Struct
+	repository := storage.NewInMemory()
+	srv := server.New(repository)
+	srv.MountHandlers()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if !tt.onlyValue {
+				request := httptest.NewRequest(http.MethodPost, "/update/gauge/"+tt.metricName+"/"+tt.value, nil)
+				// Execute Request
+				executeRequest(request, srv)
+				// Check the response code
+				request2 := httptest.NewRequest(http.MethodGet, "/value/gauge/"+tt.metricName, nil)
+				response := executeRequest(request2, srv)
+				require.Equal(t, tt.value, response.Body.String())
+			} else {
+				request2 := httptest.NewRequest(http.MethodGet, "/value/gauge/"+tt.metricName, nil)
+				response := executeRequest(request2, srv)
+				checkResponseCode(t, http.StatusNotFound, response.Code)
+			}
+
 		})
 	}
 }
