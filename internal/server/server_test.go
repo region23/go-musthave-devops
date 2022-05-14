@@ -8,7 +8,7 @@ import (
 	"github.com/region23/go-musthave-devops/internal/server/storage"
 )
 
-func TestServer_UpdateMetricHandler(t *testing.T) {
+func TestServer_UpdateMetric(t *testing.T) {
 	type fields struct {
 		repository storage.Repository
 		Router     *chi.Mux
@@ -30,12 +30,12 @@ func TestServer_UpdateMetricHandler(t *testing.T) {
 				repository: tt.fields.repository,
 				Router:     tt.fields.Router,
 			}
-			s.UpdateMetricHandler(tt.args.w, tt.args.r)
+			s.UpdateMetric(tt.args.w, tt.args.r)
 		})
 	}
 }
 
-func TestServer_GetMetricHandler(t *testing.T) {
+func TestServer_GetMetric(t *testing.T) {
 	type fields struct {
 		repository storage.Repository
 		Router     *chi.Mux
@@ -57,12 +57,12 @@ func TestServer_GetMetricHandler(t *testing.T) {
 				repository: tt.fields.repository,
 				Router:     tt.fields.Router,
 			}
-			s.GetMetricHandler(tt.args.w, tt.args.r)
+			s.GetMetric(tt.args.w, tt.args.r)
 		})
 	}
 }
 
-func TestServer_AllMetricsHandler(t *testing.T) {
+func TestServer_AllMetrics(t *testing.T) {
 	type fields struct {
 		repository storage.Repository
 		Router     *chi.Mux
@@ -84,7 +84,7 @@ func TestServer_AllMetricsHandler(t *testing.T) {
 				repository: tt.fields.repository,
 				Router:     tt.fields.Router,
 			}
-			s.AllMetricsHandler(tt.args.w, tt.args.r)
+			s.AllMetrics(tt.args.w, tt.args.r)
 		})
 	}
 }

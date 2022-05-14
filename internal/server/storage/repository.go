@@ -8,8 +8,8 @@ var (
 )
 
 type Metric struct {
-	MetricType  string
-	MetricValue string
+	Type  string
+	Value string
 }
 
 type Repository interface {

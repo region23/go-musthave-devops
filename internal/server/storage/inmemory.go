@@ -22,16 +22,20 @@ func (s *InMemory) Get(key string) (Metric, error) {
 func (s *InMemory) Put(key string, metricType string, value string) error {
 	if curMetric, ok := s.m[key]; ok {
 		//
-		if key == "PollCount" {
-			if newValue, err := strconv.Atoi(value); err == nil {
-				if curValue, err := strconv.Atoi(curMetric.MetricValue); err == nil {
-					value = strconv.Itoa(curValue + newValue)
+		if metricType == "counter" {
+			if newValue, err := strconv.ParseInt(value, 10, 64); err == nil {
+				if curValue, err := strconv.ParseInt(curMetric.Value, 10, 64); err == nil {
+					value = strconv.FormatInt(curValue+newValue, 10)
+				} else {
+					return err
 				}
+			} else {
+				return err
 			}
 		}
 	}
 
-	metric := Metric{MetricType: metricType, MetricValue: value}
+	metric := Metric{Type: metricType, Value: value}
 	s.m[key] = metric
 	return nil
 }

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/region23/go-musthave-devops/internal/server"
@@ -183,14 +185,29 @@ func TestCounter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if !tt.onlyValue {
-				request := httptest.NewRequest(http.MethodPost, "/update/counter/"+tt.metricName+"/"+tt.value, nil)
-				// Execute Request
-				executeRequest(request, srv)
-				// Check the response code
-				request2 := httptest.NewRequest(http.MethodGet, "/value/counter/"+tt.metricName, nil)
-				response := executeRequest(request2, srv)
-				require.Equal(t, tt.value, response.Body.String())
+			if tt.onlyValue == false {
+				var curValue int64
+				request0 := httptest.NewRequest(http.MethodGet, "/value/counter/"+tt.metricName, nil)
+				response0 := executeRequest(request0, srv)
+				curValue, err := strconv.ParseInt(response0.Body.String(), 10, 64)
+				if err != nil {
+					curValue = 0
+				}
+
+				if newValue, err := strconv.ParseInt(tt.value, 10, 64); err == nil {
+					wantValue := curValue + newValue
+					request := httptest.NewRequest(http.MethodPost, "/update/counter/"+tt.metricName+"/"+tt.value, nil)
+					// Execute Request
+					executeRequest(request, srv)
+					// Check the response code
+					request2 := httptest.NewRequest(http.MethodGet, "/value/counter/"+tt.metricName, nil)
+					response := executeRequest(request2, srv)
+					serverValue := response.Body.String()
+					fmt.Println(serverValue)
+					require.Equal(t, strconv.FormatInt(wantValue, 10), serverValue)
+				} else {
+					t.Fail()
+				}
 			} else {
 				request2 := httptest.NewRequest(http.MethodGet, "/value/counter/"+tt.metricName, nil)
 				response := executeRequest(request2, srv)
