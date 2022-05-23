@@ -144,7 +144,7 @@ func report(curMetric metrics.Metric) metrics.Metric {
 			}
 		}
 
-		err := sendMetric(mType, mName, mValue)
+		err := sendMetric(metricToSend)
 		if err != nil {
 			fmt.Println(err)
 		}
