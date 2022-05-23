@@ -1,13 +1,14 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/region23/go-musthave-devops/internal/serializers"
 	"github.com/region23/go-musthave-devops/internal/server/storage"
 )
 
@@ -30,38 +31,28 @@ func (s *Server) MountHandlers() {
 
 	// Mount all handlers here
 	s.Router.Get("/", s.AllMetrics)
-	s.Router.Get("/value/{metricType}/{metricName}", s.GetMetric)
-	s.Router.Post("/update/{metricType}/{metricName}/{metricValue}", s.UpdateMetric)
+	s.Router.Post("/value/", s.GetMetric)
+	s.Router.Post("/update/", s.UpdateMetric)
 }
 
 // Ручка обновляющая значение метрики
 func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
-	// extract metric from url
-	metricType := chi.URLParam(r, "metricType")
-	metricName := chi.URLParam(r, "metricName")
-	metricValue := chi.URLParam(r, "metricValue")
+	var metrics serializers.Metrics
 
-	if metricType != "gauge" && metricType != "counter" {
+	// decode input or return error
+	err := json.NewDecoder(r.Body).Decode(&metrics)
+	if err != nil {
+		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
+		return
+	}
+
+	if metrics.MType != "gauge" && metrics.MType != "counter" {
 		http.Error(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
 		return
 	}
 
-	if metricType == "gauge" {
-		if _, err := strconv.ParseFloat(metricValue, 64); err != nil {
-			http.Error(w, fmt.Sprintf("Неверное значение метрики: %v", err.Error()), http.StatusBadRequest)
-			return
-		}
-	}
-
-	if metricType == "counter" {
-		if _, err := strconv.ParseInt(metricValue, 10, 64); err != nil {
-			http.Error(w, fmt.Sprintf("Неверное значение метрики: %v", err.Error()), http.StatusBadRequest)
-			return
-		}
-	}
-
 	// write metric to repository
-	err := s.repository.Put(metricName, metricType, metricValue)
+	err = s.repository.Put(metrics)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
 		return
@@ -75,20 +66,32 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 // Ручка возвращающая значение метрики
 func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
-	// extract metric from url
-	//metricType := chi.URLParam(r, "metricType")
-	metricName := chi.URLParam(r, "metricName")
+	var metrics serializers.Metrics
 
-	metric, err := s.repository.Get(metricName)
+	// decode input or return error
+	err := json.NewDecoder(r.Body).Decode(&metrics)
+	if err != nil {
+		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
+		return
+	}
+
+	metric, err := s.repository.Get(metrics.ID)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
+	metricMarshaled, err := json.Marshal(metric)
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Ошибка при маршалинге: %v", err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(metric.Value))
+	w.Write(metricMarshaled)
 }
 
 // Ручка возвращающая все имеющиеся метрики и их значения в виде HTML-страницы

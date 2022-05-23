@@ -1,46 +1,42 @@
 package storage
 
-import "strconv"
+import (
+	"github.com/region23/go-musthave-devops/internal/serializers"
+)
 
 type InMemory struct {
-	m map[string]Metric
+	m map[string]serializers.Metrics
 }
 
 func NewInMemory() Repository {
 	return &InMemory{
-		m: make(map[string]Metric),
+		m: make(map[string]serializers.Metrics),
 	}
 }
 
-func (s *InMemory) Get(key string) (Metric, error) {
+func (s *InMemory) Get(key string) (serializers.Metrics, error) {
 	if v, ok := s.m[key]; ok {
 		return v, nil
 	}
-	return Metric{}, ErrNotFound
+	return serializers.Metrics{}, ErrNotFound
 }
 
-func (s *InMemory) Put(key string, metricType string, value string) error {
-	if curMetric, ok := s.m[key]; ok {
-		//
-		if metricType == "counter" {
-			if newValue, err := strconv.ParseInt(value, 10, 64); err == nil {
-				if curValue, err := strconv.ParseInt(curMetric.Value, 10, 64); err == nil {
-					value = strconv.FormatInt(curValue+newValue, 10)
-				} else {
-					return err
-				}
-			} else {
-				return err
-			}
+func (s *InMemory) Put(metric serializers.Metrics) error {
+	var value int64
+	if curMetric, ok := s.m[metric.ID]; ok {
+		if metric.MType == "counter" {
+			value = *curMetric.Delta + *metric.Delta
+			curMetric.Delta = &value
 		}
+
+		s.m[metric.ID] = curMetric
 	}
 
-	metric := Metric{Type: metricType, Value: value}
-	s.m[key] = metric
+	s.m[metric.ID] = metric
 	return nil
 }
 
 // All values in map
-func (s *InMemory) All() map[string]Metric {
+func (s *InMemory) All() map[string]serializers.Metrics {
 	return s.m
 }

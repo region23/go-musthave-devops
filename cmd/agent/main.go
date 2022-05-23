@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -66,35 +67,14 @@ func getMetrics(curMetric metrics.Metric) metrics.Metric {
 }
 
 // Отправляем метрику на сервер
-func sendMetric(mType string, mName string, mValue string) error {
-
-	metrics := serializers.Metrics{
-		ID:    mName,
-		MType: mType,
-	}
-
-	if mType == "gauge" {
-		if s, err := strconv.ParseFloat(mValue, 64); err == nil {
-			metrics.Value = &s
-		} else {
-			return err
-		}
-
-	} else if mType == "counter" {
-		if s, err := strconv.ParseInt(mValue, 10, 64); err == nil {
-			metrics.Delta = &s
-		} else {
-			return err
-		}
-	}
-
+func sendMetric(metricToSend serializers.Metrics) error {
 	u := url.URL{
 		Scheme: "http",
 		Host:   "127.0.0.1:8080",
 		Path:   "update",
 	}
 
-	postBody, err := json.Marshal(metrics)
+	postBody, err := json.Marshal(metricToSend)
 
 	if err != nil {
 		return err
@@ -143,6 +123,26 @@ func report(curMetric metrics.Metric) metrics.Metric {
 
 		mValue = fmt.Sprintf("%v", v.Field(i).Interface())
 		mName = fmt.Sprintf("%v", typeOfS.Field(i).Name)
+
+		metricToSend := serializers.Metrics{
+			ID:    mName,
+			MType: mType,
+		}
+
+		if mType == "gauge" {
+			if s, err := strconv.ParseFloat(mValue, 64); err == nil {
+				metricToSend.Value = &s
+			} else {
+				log.Panic(err)
+			}
+
+		} else if mType == "counter" {
+			if s, err := strconv.ParseInt(mValue, 10, 64); err == nil {
+				metricToSend.Delta = &s
+			} else {
+				log.Panic(err)
+			}
+		}
 
 		err := sendMetric(mType, mName, mValue)
 		if err != nil {
