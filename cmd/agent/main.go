@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
@@ -8,13 +10,14 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"path"
 	"reflect"
 	"runtime"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/region23/go-musthave-devops/internal/metrics"
+	"github.com/region23/go-musthave-devops/internal/serializers"
 )
 
 const (
@@ -64,14 +67,42 @@ func getMetrics(curMetric metrics.Metric) metrics.Metric {
 
 // Отправляем метрику на сервер
 func sendMetric(mType string, mName string, mValue string) error {
-	//fmt.Printf("%v | %v | %v\n", mType, mName, mValue)
+
+	metrics := serializers.Metrics{
+		ID:    mName,
+		MType: mType,
+	}
+
+	if mType == "gauge" {
+		if s, err := strconv.ParseFloat(mValue, 64); err == nil {
+			metrics.Value = &s
+		} else {
+			return err
+		}
+
+	} else if mType == "counter" {
+		if s, err := strconv.ParseInt(mValue, 10, 64); err == nil {
+			metrics.Delta = &s
+		} else {
+			return err
+		}
+	}
+
 	u := url.URL{
 		Scheme: "http",
 		Host:   "127.0.0.1:8080",
-		Path:   path.Join("update", mType, mName, mValue),
+		Path:   "update",
 	}
-	request, err := http.NewRequest(http.MethodPost, u.String(), nil)
-	request.Header.Set("Content-Type", "text/plain")
+
+	postBody, err := json.Marshal(metrics)
+
+	if err != nil {
+		return err
+	}
+
+	responseBody := bytes.NewBuffer(postBody)
+	request, err := http.NewRequest(http.MethodPost, u.String(), responseBody)
+	request.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		return err
 	}
