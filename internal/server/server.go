@@ -31,8 +31,8 @@ func (s *Server) MountHandlers() {
 
 	// Mount all handlers here
 	s.Router.Get("/", s.AllMetrics)
-	s.Router.Post("/value/", s.GetMetric)
-	s.Router.Post("/update/", s.UpdateMetric)
+	s.Router.Post("/value", s.GetMetric)
+	s.Router.Post("/update", s.UpdateMetric)
 }
 
 // Ручка обновляющая значение метрики
