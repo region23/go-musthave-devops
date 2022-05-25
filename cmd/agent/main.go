@@ -124,10 +124,7 @@ func report(curMetric metrics.Metric) metrics.Metric {
 		mValue = fmt.Sprintf("%v", v.Field(i).Interface())
 		mName = fmt.Sprintf("%v", typeOfS.Field(i).Name)
 
-		metricToSend, err := serializers.NewMetrics(mName, mType)
-		if err != nil {
-			log.Panic(err)
-		}
+		metricToSend := serializers.NewMetrics(mName, mType)
 
 		if mType == "gauge" {
 			if s, err := strconv.ParseFloat(mValue, 64); err == nil {
@@ -144,7 +141,7 @@ func report(curMetric metrics.Metric) metrics.Metric {
 			}
 		}
 
-		err = sendMetric(metricToSend)
+		err := sendMetric(metricToSend)
 		if err != nil {
 			fmt.Println(err)
 		}
