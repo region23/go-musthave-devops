@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -31,18 +32,71 @@ func (s *Server) MountHandlers() {
 
 	// Mount all handlers here
 	s.Router.Get("/", s.AllMetrics)
+	s.Router.Post("/update", s.UpdateMetricJSON)
+	s.Router.Post("/update/{metricType}/{metricName}/{metricValue}", s.UpdateMetric)
 	s.Router.Post("/value", s.GetMetric)
-	s.Router.Post("/update", s.UpdateMetric)
+	s.Router.Get("/value/{metricType}/{metricName}", s.GetMetricJSON)
+
+}
+
+func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
+	// extract metric from url
+	metricType := chi.URLParam(r, "metricType")
+	metricName := chi.URLParam(r, "metricName")
+	metricValue := chi.URLParam(r, "metricValue")
+
+	if metricType != "gauge" && metricType != "counter" {
+		http.Error(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
+		return
+	}
+
+	if metricType == "gauge" {
+		if _, err := strconv.ParseFloat(metricValue, 64); err != nil {
+			http.Error(w, fmt.Sprintf("Неверное значение метрики: %v", err.Error()), http.StatusBadRequest)
+			return
+		}
+	}
+
+	if metricType == "counter" {
+		if _, err := strconv.ParseInt(metricValue, 10, 64); err != nil {
+			http.Error(w, fmt.Sprintf("Неверное значение метрики: %v", err.Error()), http.StatusBadRequest)
+			return
+		}
+	}
+
+	metric := serializers.NewMetrics(metricName, metricType, metricValue)
+
+	// write metric to repository
+	err := s.repository.Put(metric)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	// response answer
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`Metric updated`))
 }
 
 // Ручка обновляющая значение метрики
-func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
+func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metrics serializers.Metrics
 
 	// decode input or return error
 	err := json.NewDecoder(r.Body).Decode(&metrics)
 	if err != nil {
 		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
+		return
+	}
+
+	if metrics.ID == "" {
+		http.Error(w, "Metric name can't be empty", http.StatusNotFound)
+		return
+	}
+
+	if metrics.Value == nil && metrics.Delta == nil {
+		http.Error(w, "Value can't be nil", http.StatusBadRequest)
 		return
 	}
 
@@ -66,6 +120,26 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 // Ручка возвращающая значение метрики
 func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
+	metricName := chi.URLParam(r, "metricName")
+
+	metric, err := s.repository.Get(metricName)
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if metric.MType == "counter" {
+		w.Write([]byte(strconv.FormatInt(*metric.Delta, 10)))
+	} else if metric.MType == "gauge" {
+		w.Write([]byte(fmt.Sprintf("%g", *metric.Value)))
+	}
+}
+
+// Ручка возвращающая значение метрики
+func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metrics serializers.Metrics
 
 	// decode input or return error
@@ -75,14 +149,14 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metric, err := s.repository.Get(metrics.ID)
+	metrics, err = s.repository.Get(metrics.ID)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)
 		return
 	}
 
-	metricMarshaled, err := json.Marshal(metric)
+	metricMarshaled, err := json.Marshal(metrics)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при маршалинге: %v", err.Error()), http.StatusBadRequest)
