@@ -2,8 +2,6 @@ package serializers
 
 import (
 	"strconv"
-
-	"log"
 )
 
 type Metrics struct {
@@ -29,16 +27,14 @@ func NewMetrics(id string, mtype string, val ...interface{}) Metrics {
 	case string:
 		if mtype == "counter" {
 			convertedV, err := strconv.ParseInt(v, 10, 64)
-			if err != nil {
-				log.Println(err)
+			if err == nil {
+				m.Delta = &convertedV
 			}
-			m.Delta = &convertedV
 		} else if mtype == "gauge" {
 			convertedV, err := strconv.ParseFloat(v, 64)
-			if err != nil {
-				log.Println(err)
+			if err == nil {
+				m.Value = &convertedV
 			}
-			m.Value = &convertedV
 		}
 	default:
 	}

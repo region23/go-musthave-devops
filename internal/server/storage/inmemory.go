@@ -25,9 +25,9 @@ func (s *InMemory) Put(metric serializers.Metrics) error {
 	if curMetric, ok := s.m[metric.ID]; ok {
 		if metric.MType == "counter" {
 			*curMetric.Delta = *curMetric.Delta + *metric.Delta
+			s.m[metric.ID] = curMetric
+			return nil
 		}
-
-		s.m[metric.ID] = curMetric
 	}
 
 	s.m[metric.ID] = metric

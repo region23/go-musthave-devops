@@ -34,8 +34,8 @@ func (s *Server) MountHandlers() {
 	s.Router.Get("/", s.AllMetrics)
 	s.Router.Post("/update", s.UpdateMetricJSON)
 	s.Router.Post("/update/{metricType}/{metricName}/{metricValue}", s.UpdateMetric)
-	s.Router.Post("/value", s.GetMetric)
-	s.Router.Get("/value/{metricType}/{metricName}", s.GetMetricJSON)
+	s.Router.Post("/value", s.GetMetricJSON)
+	s.Router.Get("/value/{metricType}/{metricName}", s.GetMetric)
 
 }
 
@@ -141,7 +141,6 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 // Ручка возвращающая значение метрики
 func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metrics serializers.Metrics
-
 	// decode input or return error
 	err := json.NewDecoder(r.Body).Decode(&metrics)
 	if err != nil {
@@ -156,16 +155,13 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metricMarshaled, err := json.Marshal(metrics)
-
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Ошибка при маршалинге: %v", err.Error()), http.StatusBadRequest)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(metricMarshaled)
+	err = json.NewEncoder(w).Encode(metrics)
+	if err != nil {
+		http.Error(w, "Encode error! please check your JSON formating.", http.StatusBadRequest)
+		return
+	}
 }
 
 // Ручка возвращающая все имеющиеся метрики и их значения в виде HTML-страницы

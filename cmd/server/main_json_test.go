@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -205,17 +204,18 @@ func TestCounterJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.onlyValue == false {
 				// получаем текущее значение метрики
-				metric := serializers.NewMetrics(tt.metricName, "counter")
-				postBody, err := json.Marshal(metric)
+				beforeMetric := serializers.NewMetrics(tt.metricName, "counter")
+				postBody, err := json.Marshal(beforeMetric)
 
 				if err != nil {
-					t.Error(err)
+					t.Fatal(err)
 				}
-				var returnedMetric serializers.Metrics
+
 				responseBody := bytes.NewBuffer(postBody)
 				request0 := httptest.NewRequest(http.MethodPost, "/value", responseBody)
 				request0.Header.Set("Content-Type", "application/json")
 				response0 := executeRequest(request0, srv)
+				var returnedMetric serializers.Metrics
 				if response0.Code == http.StatusOK {
 					// decode input or return error
 					err = json.NewDecoder(response0.Body).Decode(&returnedMetric)
@@ -231,11 +231,10 @@ func TestCounterJSON(t *testing.T) {
 				} else {
 					wantValue = *newMetric.Delta
 				}
-				fmt.Println(wantValue)
 				postBody, err = json.Marshal(newMetric)
 
 				if err != nil {
-					t.Error(err)
+					t.Fatal(err)
 				}
 
 				responseBody = bytes.NewBuffer(postBody)
@@ -244,18 +243,18 @@ func TestCounterJSON(t *testing.T) {
 				request1.Header.Set("Content-Type", "application/json")
 				response1 := executeRequest(request1, srv)
 				if response1.Code == http.StatusOK {
-
+					responseBody := bytes.NewBuffer(postBody)
 					request2 := httptest.NewRequest(http.MethodPost, "/value", responseBody)
 					request2.Header.Set("Content-Type", "application/json")
 					response2 := executeRequest(request2, srv)
-					err = json.NewDecoder(response2.Body).Decode(&newMetric)
+					var afterMetric serializers.Metrics
+					err = json.NewDecoder(response2.Body).Decode(&afterMetric)
 					if err != nil {
-						t.Error(err)
+						t.Fatal(err)
 					}
-					fmt.Println(newMetric.Delta)
-					require.Equal(t, wantValue, *newMetric.Delta)
+					require.Equal(t, wantValue, *afterMetric.Delta)
 				} else {
-					t.Error("Value not found")
+					t.Fatal("Value not found")
 				}
 
 			} else {
@@ -263,7 +262,7 @@ func TestCounterJSON(t *testing.T) {
 				postBody, err := json.Marshal(metric)
 
 				if err != nil {
-					t.Error(err)
+					t.Fatal(err)
 				}
 
 				responseBody := bytes.NewBuffer(postBody)
@@ -322,7 +321,7 @@ func TestGaugeJSON(t *testing.T) {
 				postBody, err := json.Marshal(metric)
 
 				if err != nil {
-					t.Error(err)
+					t.Fatal(err)
 				}
 
 				responseBody := bytes.NewBuffer(postBody)
@@ -332,21 +331,22 @@ func TestGaugeJSON(t *testing.T) {
 				// Execute Request
 				executeRequest(request, srv)
 				// Check the response code
+				responseBody = bytes.NewBuffer(postBody)
 				request1 := httptest.NewRequest(http.MethodPost, "/value", responseBody)
 				request1.Header.Set("Content-Type", "application/json")
 				response1 := executeRequest(request1, srv)
 				var newMetric serializers.Metrics
 				err = json.NewDecoder(response1.Body).Decode(&newMetric)
 				if err != nil {
-					t.Error(err)
+					t.Fatal(err)
 				}
-				require.Equal(t, tt.value, newMetric.Value)
+				require.Equal(t, tt.value, *newMetric.Value)
 			} else {
 				metric := serializers.NewMetrics(tt.metricName, "gauge")
 				postBody, err := json.Marshal(metric)
 
 				if err != nil {
-					t.Error(err)
+					t.Fatal(err)
 				}
 
 				responseBody := bytes.NewBuffer(postBody)
