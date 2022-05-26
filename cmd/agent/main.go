@@ -23,9 +23,9 @@ import (
 )
 
 type Config struct {
-	Address        string `env:"ADDRESS" envDefault:"127.0.0.1:8080"`
-	ReportInterval int    `env:"REPORT_INTERVAL" envDefault:"10"`
-	PollInterval   int    `env:"POLL_INTERVAL" envDefault:"2"`
+	Address        string        `env:"ADDRESS" envDefault:"127.0.0.1:8080"`
+	ReportInterval time.Duration `env:"REPORT_INTERVAL" envDefault:"10s"`
+	PollInterval   time.Duration `env:"POLL_INTERVAL" envDefault:"2s"`
 }
 
 var cfg Config
@@ -166,8 +166,8 @@ func main() {
 	osSigChan := make(chan os.Signal, 1)
 	signal.Notify(osSigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	pollTick := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
-	reportTick := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
+	pollTick := time.NewTicker(cfg.PollInterval)
+	reportTick := time.NewTicker(cfg.ReportInterval)
 	for {
 		select {
 		case <-pollTick.C:
