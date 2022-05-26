@@ -166,8 +166,8 @@ func main() {
 	osSigChan := make(chan os.Signal, 1)
 	signal.Notify(osSigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	pollTick := time.NewTicker(time.Duration(cfg.PollInterval * int(time.Second)))
-	reportTick := time.NewTicker(time.Duration(cfg.PollInterval * int(time.Second)))
+	pollTick := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
+	reportTick := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
 	for {
 		select {
 		case <-pollTick.C:
