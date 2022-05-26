@@ -17,14 +17,18 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/caarlos0/env/v6"
 	"github.com/region23/go-musthave-devops/internal/metrics"
 	"github.com/region23/go-musthave-devops/internal/serializers"
 )
 
-const (
-	pollInterval = 2 * time.Second
-	pollDuration = 10 * time.Second
-)
+type Config struct {
+	Address        string `env:"ADDRESS" envDefault:"127.0.0.1:8080"`
+	ReportInterval int    `env:"REPORT_INTERVAL" envDefault:"10"`
+	PollInterval   int    `env:"POLL_INTERVAL" envDefault:"2"`
+}
+
+var cfg Config
 
 func getMetrics(curMetric metrics.Metric) metrics.Metric {
 	var memStats runtime.MemStats
@@ -70,7 +74,7 @@ func getMetrics(curMetric metrics.Metric) metrics.Metric {
 func sendMetric(metricToSend serializers.Metrics) error {
 	u := url.URL{
 		Scheme: "http",
-		Host:   "127.0.0.1:8080",
+		Host:   cfg.Address,
 		Path:   "update",
 	}
 
@@ -152,14 +156,18 @@ func report(curMetric metrics.Metric) metrics.Metric {
 }
 
 func main() {
+	if err := env.Parse(&cfg); err != nil {
+		fmt.Printf("%+v\n", err)
+	}
+
 	var curMetric metrics.Metric
 	curMetric = getMetrics(curMetric)
 
 	osSigChan := make(chan os.Signal, 1)
 	signal.Notify(osSigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	pollTick := time.NewTicker(pollInterval)
-	reportTick := time.NewTicker(pollDuration)
+	pollTick := time.NewTicker(time.Duration(cfg.PollInterval * int(time.Second)))
+	reportTick := time.NewTicker(time.Duration(cfg.PollInterval * int(time.Second)))
 	for {
 		select {
 		case <-pollTick.C:
