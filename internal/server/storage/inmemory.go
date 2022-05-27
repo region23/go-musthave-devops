@@ -8,7 +8,7 @@ type InMemory struct {
 	m map[string]serializers.Metrics
 }
 
-func NewInMemory() Repository {
+func NewInMemory() Storage {
 	return &InMemory{
 		m: make(map[string]serializers.Metrics),
 	}
@@ -37,4 +37,14 @@ func (s *InMemory) Put(metric serializers.Metrics) error {
 // All values in map
 func (s *InMemory) All() map[string]serializers.Metrics {
 	return s.m
+}
+
+// Обновляет мапу с метриками в памяти снэпшотом данных из файла
+func (s *InMemory) UpdateAll(m map[string]serializers.Metrics) {
+	s.m = m
+}
+
+// Возвращает мапу с метриками из памяти
+func (s *InMemory) GetAll() *map[string]serializers.Metrics {
+	return &s.m
 }

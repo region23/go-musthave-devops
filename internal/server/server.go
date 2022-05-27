@@ -14,14 +14,14 @@ import (
 )
 
 type Server struct {
-	repository storage.Repository
-	Router     *chi.Mux
+	storage storage.Storage
+	Router  *chi.Mux
 }
 
-func New(repository storage.Repository) *Server {
+func New(storage storage.Storage) *Server {
 	return &Server{
-		repository: repository,
-		Router:     chi.NewRouter(),
+		storage: storage,
+		Router:  chi.NewRouter(),
 	}
 }
 
@@ -67,7 +67,7 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	metric := serializers.NewMetrics(metricName, metricType, metricValue)
 
 	// write metric to repository
-	err := s.repository.Put(metric)
+	err := s.storage.Put(metric)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
 		return
@@ -106,7 +106,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// write metric to repository
-	err = s.repository.Put(metrics)
+	err = s.storage.Put(metrics)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
 		return
@@ -122,7 +122,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 	metricName := chi.URLParam(r, "metricName")
 
-	metric, err := s.repository.Get(metricName)
+	metric, err := s.storage.Get(metricName)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)
@@ -148,7 +148,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metrics, err = s.repository.Get(metrics.ID)
+	metrics, err = s.storage.Get(metrics.ID)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)
@@ -172,5 +172,5 @@ func (s *Server) AllMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl.Execute(w, s.repository.All())
+	tmpl.Execute(w, s.storage.All())
 }
