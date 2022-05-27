@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,15 +16,24 @@ import (
 )
 
 type Config struct {
-	Address       string        `env:"ADDRESS" envDefault:"127.0.0.1:8080"`
-	StoreInterval time.Duration `env:"STORE_INTERVAL" envDefault:"300s"`
-	StoreFile     string        `env:"STORE_FILE" envDefault:"/tmp/devops-metrics-db.json"`
-	Restore       bool          `env:"RESTORE" envDefault:"true"`
+	Address       string        `env:"ADDRESS"`
+	StoreInterval time.Duration `env:"STORE_INTERVAL"`
+	StoreFile     string        `env:"STORE_FILE"`
+	Restore       bool          `env:"RESTORE"`
 }
 
-var cfg Config
+var cfg Config = Config{}
+
+func init() {
+	flag.StringVar(&cfg.Address, "a", "127.0.0.1:8080", "server address")
+	flag.BoolVar(&cfg.Restore, "r", true, "restore metrics before start")
+	flag.DurationVar(&cfg.StoreInterval, "i", 300*time.Second, "store interval")
+	flag.StringVar(&cfg.StoreFile, "f", "/tmp/devops-metrics-db.json", "path to file for metrics store")
+}
 
 func main() {
+	flag.Parse()
+
 	if err := env.Parse(&cfg); err != nil {
 		fmt.Printf("%+v\n", err)
 	}

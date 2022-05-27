@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -23,12 +24,18 @@ import (
 )
 
 type Config struct {
-	Address        string        `env:"ADDRESS" envDefault:"127.0.0.1:8080"`
-	ReportInterval time.Duration `env:"REPORT_INTERVAL" envDefault:"10s"`
-	PollInterval   time.Duration `env:"POLL_INTERVAL" envDefault:"2s"`
+	Address        string        `env:"ADDRESS"`
+	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
+	PollInterval   time.Duration `env:"POLL_INTERVAL"`
 }
 
-var cfg Config
+var cfg Config = Config{}
+
+func init() {
+	flag.StringVar(&cfg.Address, "a", "127.0.0.1:8080", "server address")
+	flag.DurationVar(&cfg.ReportInterval, "r", 10*time.Second, "report interval")
+	flag.DurationVar(&cfg.PollInterval, "p", 2*time.Second, "poll interval")
+}
 
 func getMetrics(curMetric metrics.Metric) metrics.Metric {
 	var memStats runtime.MemStats
@@ -156,6 +163,8 @@ func report(curMetric metrics.Metric) metrics.Metric {
 }
 
 func main() {
+	flag.Parse()
+
 	if err := env.Parse(&cfg); err != nil {
 		fmt.Printf("%+v\n", err)
 	}
