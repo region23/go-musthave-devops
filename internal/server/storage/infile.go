@@ -2,6 +2,8 @@ package storage
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"os"
 
 	"github.com/region23/go-musthave-devops/internal/serializers"
@@ -49,7 +51,9 @@ func NewConsumer(fileName string) (*consumer, error) {
 func (c *consumer) ReadMetrics() (*map[string]serializers.Metrics, error) {
 	metrics := &map[string]serializers.Metrics{}
 	if err := c.decoder.Decode(&metrics); err != nil {
-		return nil, err
+		if !errors.Is(err, io.EOF) {
+			return nil, err
+		}
 	}
 	return metrics, nil
 }

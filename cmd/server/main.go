@@ -32,6 +32,7 @@ func main() {
 	signal.Notify(osSigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	repository := storage.NewInMemory()
+
 	consumer, err := storage.NewConsumer(cfg.StoreFile)
 	if err != nil {
 		log.Fatalf("%+v\n", err)
@@ -46,26 +47,28 @@ func main() {
 		repository.UpdateAll(*metricsFromFile)
 	}
 
-	srv := server.New(repository)
-	srv.MountHandlers()
-
-	go log.Fatal(http.ListenAndServe(cfg.Address, srv.Router))
-
 	producer, err := storage.NewProducer(cfg.StoreFile)
 	if err != nil {
 		log.Fatalf("%+v\n", err)
 	}
 
 	storeIntervalTick := time.NewTicker(cfg.StoreInterval)
-	for {
-		select {
-		case <-storeIntervalTick.C:
-			metrics := repository.GetAll()
-			producer.WriteMetrics(metrics)
-		case <-osSigChan:
-			metrics := repository.GetAll()
-			producer.WriteMetrics(metrics)
-			os.Exit(0)
+	go func() {
+		for {
+			select {
+			case <-storeIntervalTick.C:
+				metrics := repository.GetAll()
+				producer.WriteMetrics(metrics)
+			case <-osSigChan:
+				metrics := repository.GetAll()
+				producer.WriteMetrics(metrics)
+				os.Exit(0)
+			}
 		}
-	}
+	}()
+
+	srv := server.New(repository)
+	srv.MountHandlers()
+
+	http.ListenAndServe(cfg.Address, srv.Router)
 }
