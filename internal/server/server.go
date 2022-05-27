@@ -14,11 +14,11 @@ import (
 )
 
 type Server struct {
-	storage storage.Storage
+	storage storage.Repository
 	Router  *chi.Mux
 }
 
-func New(storage storage.Storage) *Server {
+func New(storage storage.Repository) *Server {
 	return &Server{
 		storage: storage,
 		Router:  chi.NewRouter(),

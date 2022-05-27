@@ -8,7 +8,7 @@ type InMemory struct {
 	m map[string]serializers.Metrics
 }
 
-func NewInMemory() Storage {
+func NewInMemory() Repository {
 	return &InMemory{
 		m: make(map[string]serializers.Metrics),
 	}

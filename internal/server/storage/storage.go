@@ -11,7 +11,7 @@ var (
 	ErrAlreadyExists = errors.New("already exists")
 )
 
-type Storage interface {
+type Repository interface {
 	Get(key string) (serializers.Metrics, error)
 	Put(metric serializers.Metrics) error
 	All() map[string]serializers.Metrics
