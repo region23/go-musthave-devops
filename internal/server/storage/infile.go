@@ -26,7 +26,10 @@ func NewProducer(fileName string) (*Producer, error) {
 }
 
 func (p *Producer) WriteMetrics(metrics *map[string]serializers.Metrics) error {
-	return p.encoder.Encode(&metrics)
+	if metrics != nil {
+		return p.encoder.Encode(&metrics)
+	}
+	return errors.New("can't write metric to file from memory - object is empty")
 }
 
 func (p *Producer) Close() error {
