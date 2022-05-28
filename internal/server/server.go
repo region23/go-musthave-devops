@@ -173,5 +173,7 @@ func (s *Server) AllMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
 	tmpl.Execute(w, s.storage.All())
 }
