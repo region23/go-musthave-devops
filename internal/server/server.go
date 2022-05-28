@@ -29,6 +29,7 @@ func (s *Server) MountHandlers() {
 	// Mount all Middleware here
 	s.Router.Use(middleware.Logger)
 	s.Router.Use(middleware.StripSlashes)
+	s.Router.Use(middleware.Compress(5))
 
 	// Mount all handlers here
 	s.Router.Get("/", s.AllMetrics)
