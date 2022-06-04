@@ -27,8 +27,8 @@ func TestServer_UpdateMetric(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Server{
-				repository: tt.fields.repository,
-				Router:     tt.fields.Router,
+				storage: tt.fields.repository,
+				Router:  tt.fields.Router,
 			}
 			s.UpdateMetric(tt.args.w, tt.args.r)
 		})
@@ -54,8 +54,8 @@ func TestServer_GetMetric(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Server{
-				repository: tt.fields.repository,
-				Router:     tt.fields.Router,
+				storage: tt.fields.repository,
+				Router:  tt.fields.Router,
 			}
 			s.GetMetric(tt.args.w, tt.args.r)
 		})
@@ -81,8 +81,8 @@ func TestServer_AllMetrics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Server{
-				repository: tt.fields.repository,
-				Router:     tt.fields.Router,
+				storage: tt.fields.repository,
+				Router:  tt.fields.Router,
 			}
 			s.AllMetrics(tt.args.w, tt.args.r)
 		})

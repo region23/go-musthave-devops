@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -203,7 +202,6 @@ func TestCounter(t *testing.T) {
 					request2 := httptest.NewRequest(http.MethodGet, "/value/counter/"+tt.metricName, nil)
 					response := executeRequest(request2, srv)
 					serverValue := response.Body.String()
-					fmt.Println(serverValue)
 					require.Equal(t, strconv.FormatInt(wantValue, 10), serverValue)
 				} else {
 					t.Fail()

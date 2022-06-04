@@ -1,26 +1,41 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
-	"path"
 	"reflect"
 	"runtime"
+	"strconv"
 	"syscall"
 	"time"
 
+	"github.com/caarlos0/env/v6"
 	"github.com/region23/go-musthave-devops/internal/metrics"
+	"github.com/region23/go-musthave-devops/internal/serializers"
 )
 
-const (
-	pollInterval = 2 * time.Second
-	pollDuration = 10 * time.Second
-)
+type Config struct {
+	Address        string        `env:"ADDRESS"`
+	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
+	PollInterval   time.Duration `env:"POLL_INTERVAL"`
+}
+
+var cfg Config = Config{}
+
+func init() {
+	flag.StringVar(&cfg.Address, "a", "127.0.0.1:8080", "server address")
+	flag.DurationVar(&cfg.ReportInterval, "r", 10*time.Second, "report interval")
+	flag.DurationVar(&cfg.PollInterval, "p", 2*time.Second, "poll interval")
+}
 
 func getMetrics(curMetric metrics.Metric) metrics.Metric {
 	var memStats runtime.MemStats
@@ -63,15 +78,22 @@ func getMetrics(curMetric metrics.Metric) metrics.Metric {
 }
 
 // Отправляем метрику на сервер
-func sendMetric(mType string, mName string, mValue string) error {
-	//fmt.Printf("%v | %v | %v\n", mType, mName, mValue)
+func sendMetric(metricToSend serializers.Metrics) error {
 	u := url.URL{
 		Scheme: "http",
-		Host:   "127.0.0.1:8080",
-		Path:   path.Join("update", mType, mName, mValue),
+		Host:   cfg.Address,
+		Path:   "update",
 	}
-	request, err := http.NewRequest(http.MethodPost, u.String(), nil)
-	request.Header.Set("Content-Type", "text/plain")
+
+	postBody, err := json.Marshal(metricToSend)
+
+	if err != nil {
+		return err
+	}
+
+	responseBody := bytes.NewBuffer(postBody)
+	request, err := http.NewRequest(http.MethodPost, u.String(), responseBody)
+	request.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		return err
 	}
@@ -113,7 +135,24 @@ func report(curMetric metrics.Metric) metrics.Metric {
 		mValue = fmt.Sprintf("%v", v.Field(i).Interface())
 		mName = fmt.Sprintf("%v", typeOfS.Field(i).Name)
 
-		err := sendMetric(mType, mName, mValue)
+		metricToSend := serializers.NewMetrics(mName, mType)
+
+		if mType == "gauge" {
+			if s, err := strconv.ParseFloat(mValue, 64); err == nil {
+				metricToSend.Value = &s
+			} else {
+				log.Panic(err)
+			}
+
+		} else if mType == "counter" {
+			if s, err := strconv.ParseInt(mValue, 10, 64); err == nil {
+				metricToSend.Delta = &s
+			} else {
+				log.Panic(err)
+			}
+		}
+
+		err := sendMetric(metricToSend)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -124,14 +163,20 @@ func report(curMetric metrics.Metric) metrics.Metric {
 }
 
 func main() {
+	flag.Parse()
+
+	if err := env.Parse(&cfg); err != nil {
+		fmt.Printf("%+v\n", err)
+	}
+
 	var curMetric metrics.Metric
 	curMetric = getMetrics(curMetric)
 
 	osSigChan := make(chan os.Signal, 1)
 	signal.Notify(osSigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	pollTick := time.NewTicker(pollInterval)
-	reportTick := time.NewTicker(pollDuration)
+	pollTick := time.NewTicker(cfg.PollInterval)
+	reportTick := time.NewTicker(cfg.ReportInterval)
 	for {
 		select {
 		case <-pollTick.C:
