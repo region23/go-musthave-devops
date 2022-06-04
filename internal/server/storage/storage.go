@@ -16,5 +16,4 @@ type Repository interface {
 	Put(metric serializers.Metrics) error
 	All() map[string]serializers.Metrics
 	UpdateAll(m map[string]serializers.Metrics)
-	GetAll() map[string]serializers.Metrics
 }

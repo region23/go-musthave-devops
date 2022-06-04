@@ -67,10 +67,10 @@ func main() {
 		for {
 			select {
 			case <-storeIntervalTick.C:
-				metrics := repository.GetAll()
+				metrics := repository.All()
 				producer.WriteMetrics(metrics)
 			case <-osSigChan:
-				metrics := repository.GetAll()
+				metrics := repository.All()
 				producer.WriteMetrics(metrics)
 				os.Exit(0)
 			}

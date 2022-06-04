@@ -1,11 +1,14 @@
 package storage
 
 import (
+	"sync"
+
 	"github.com/region23/go-musthave-devops/internal/serializers"
 )
 
 type InMemory struct {
-	m map[string]serializers.Metrics
+	mu sync.Mutex
+	m  map[string]serializers.Metrics
 }
 
 func NewInMemory() Repository {
@@ -15,6 +18,8 @@ func NewInMemory() Repository {
 }
 
 func (s *InMemory) Get(key string) (serializers.Metrics, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if v, ok := s.m[key]; ok {
 		return v, nil
 	}
@@ -22,6 +27,8 @@ func (s *InMemory) Get(key string) (serializers.Metrics, error) {
 }
 
 func (s *InMemory) Put(metric serializers.Metrics) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if curMetric, ok := s.m[metric.ID]; ok {
 		if metric.MType == "counter" {
 			*curMetric.Delta = *curMetric.Delta + *metric.Delta
@@ -36,15 +43,14 @@ func (s *InMemory) Put(metric serializers.Metrics) error {
 
 // All values in map
 func (s *InMemory) All() map[string]serializers.Metrics {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.m
 }
 
 // Обновляет мапу с метриками в памяти снэпшотом данных из файла
 func (s *InMemory) UpdateAll(m map[string]serializers.Metrics) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.m = m
-}
-
-// Возвращает мапу с метриками из памяти
-func (s *InMemory) GetAll() map[string]serializers.Metrics {
-	return s.m
 }
