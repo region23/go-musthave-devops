@@ -45,6 +45,6 @@ func (s *InMemory) UpdateAll(m map[string]serializers.Metrics) {
 }
 
 // Возвращает мапу с метриками из памяти
-func (s *InMemory) GetAll() *map[string]serializers.Metrics {
-	return &s.m
+func (s *InMemory) GetAll() map[string]serializers.Metrics {
+	return s.m
 }
