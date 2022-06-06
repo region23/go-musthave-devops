@@ -20,6 +20,7 @@ type Config struct {
 	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 	StoreFile     string        `env:"STORE_FILE"`
 	Restore       bool          `env:"RESTORE"`
+	Key           string        `env:"KEY"`
 }
 
 var cfg Config = Config{}
@@ -29,6 +30,7 @@ func init() {
 	flag.BoolVar(&cfg.Restore, "r", true, "restore metrics before start")
 	flag.DurationVar(&cfg.StoreInterval, "i", 300*time.Second, "store interval")
 	flag.StringVar(&cfg.StoreFile, "f", "/tmp/devops-metrics-db.json", "path to file for metrics store")
+	flag.StringVar(&cfg.Key, "k", "", "key for hashing")
 }
 
 func main() {

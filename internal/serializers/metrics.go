@@ -1,6 +1,10 @@
 package serializers
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"strconv"
 )
 
@@ -40,4 +44,11 @@ func NewMetrics(id string, mtype string, val ...interface{}) Metrics {
 	default:
 	}
 	return m
+}
+
+func Hash(mType, mName, mValue, key string) string {
+	str := fmt.Sprintf("%s:%s:%s", mName, mType, mValue)
+	h := hmac.New(sha256.New, []byte(key))
+	h.Write([]byte(str))
+	return hex.EncodeToString(h.Sum(nil))
 }

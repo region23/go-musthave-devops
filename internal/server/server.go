@@ -17,12 +17,14 @@ import (
 type Server struct {
 	storage storage.Repository
 	Router  *chi.Mux
+	Key     string
 }
 
-func New(storage storage.Repository) *Server {
+func New(storage storage.Repository, key string) *Server {
 	return &Server{
 		storage: storage,
 		Router:  chi.NewRouter(),
+		Key:     key,
 	}
 }
 
@@ -107,6 +109,20 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Если хэш не пустой, то сверяем хэши
+	if metrics.Hash != "" {
+		var serverGeneratedHash string
+		if metrics.MType != "gauge" {
+			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%g", *metrics.Value), s.Key)
+		} else if metrics.MType != "counter" {
+			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, strconv.FormatInt(*metrics.Delta, 10), s.Key)
+		}
+
+		if metrics.Hash != serverGeneratedHash {
+			http.Error(w, "Hash is not valid", http.StatusBadRequest)
+		}
+	}
+
 	// write metric to repository
 	err = s.storage.Put(metrics)
 	if err != nil {
@@ -151,6 +167,18 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	metrics, err = s.storage.Get(metrics.ID)
+
+	// Если хэш не пустой, то сверяем хэши
+	if metrics.Hash != "" {
+		var serverGeneratedHash string
+		if metrics.MType != "gauge" {
+			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%g", *metrics.Value), s.Key)
+		} else if metrics.MType != "counter" {
+			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, strconv.FormatInt(*metrics.Delta, 10), s.Key)
+		}
+
+		metrics.Hash = serverGeneratedHash
+	}
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)

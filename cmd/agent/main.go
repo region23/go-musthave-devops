@@ -2,9 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -146,7 +143,7 @@ func report(curMetric metrics.Metric, key string) metrics.Metric {
 			if s, err := strconv.ParseFloat(mValue, 64); err == nil {
 				metricToSend.Value = &s
 				if key != "" {
-					metricToSend.Hash = hash(fmt.Sprintf("%s:gauge:%s", mName, mValue), key)
+					metricToSend.Hash = serializers.Hash(mType, mName, mValue, key)
 				}
 
 			} else {
@@ -157,7 +154,7 @@ func report(curMetric metrics.Metric, key string) metrics.Metric {
 			if s, err := strconv.ParseInt(mValue, 10, 64); err == nil {
 				metricToSend.Delta = &s
 				if key != "" {
-					metricToSend.Hash = hash(fmt.Sprintf("%s:counter:%s", mName, mValue), key)
+					metricToSend.Hash = serializers.Hash(mType, mName, mValue, key)
 				}
 			} else {
 				log.Panic(err)
@@ -172,12 +169,6 @@ func report(curMetric metrics.Metric, key string) metrics.Metric {
 
 	curMetric.PollCount = 1
 	return curMetric
-}
-
-func hash(str, key string) string {
-	h := hmac.New(sha256.New, []byte(key))
-	h.Write([]byte(str))
-	return hex.EncodeToString(h.Sum(nil))
 }
 
 func main() {
