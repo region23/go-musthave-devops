@@ -111,19 +111,14 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 	// Если хэш не пустой, то сверяем хэши
 	if s.Key != "" && metrics.Hash != "" && metrics.Hash != "none" {
-
-		fmt.Println("Hash:", metrics.Hash)
-
 		var serverGeneratedHash string
 		if metrics.MType == "gauge" {
-			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%g", *metrics.Value), s.Key)
+			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%f", *metrics.Value), s.Key)
 		} else if metrics.MType == "counter" {
-			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, strconv.FormatInt(*metrics.Delta, 10), s.Key)
+			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%d", *metrics.Delta), s.Key)
 		}
 
 		if metrics.Hash != serverGeneratedHash {
-			fmt.Printf("Хэш от клиента %v не равен хэшу вычисленному на сервере %v\n", metrics.Hash, serverGeneratedHash)
-			fmt.Printf("%v %v %g %v\n", metrics.MType, metrics.ID, *metrics.Value, s.Key)
 			http.Error(w, "Hash is not valid", http.StatusBadRequest)
 			return
 		}
@@ -178,10 +173,9 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	if s.Key != "" {
 		var serverGeneratedHash string
 		if metrics.MType == "gauge" {
-			fmt.Println(*metrics.Value)
 			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%f", *metrics.Value), s.Key)
 		} else if metrics.MType == "counter" {
-			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, strconv.FormatInt(*metrics.Delta, 10), s.Key)
+			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%d", *metrics.Delta), s.Key)
 		}
 
 		metrics.Hash = serverGeneratedHash
