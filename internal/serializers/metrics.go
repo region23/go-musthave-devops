@@ -48,6 +48,7 @@ func NewMetrics(id string, mtype string, val ...interface{}) Metrics {
 
 func Hash(mType, mName, mValue, key string) string {
 	str := fmt.Sprintf("%s:%s:%s", mName, mType, mValue)
+	fmt.Println(str)
 	h := hmac.New(sha256.New, []byte(key))
 	h.Write([]byte(str))
 	return hex.EncodeToString(h.Sum(nil))
