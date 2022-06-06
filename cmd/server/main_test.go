@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var key = "test"
+
 // executeRequest, creates a new ResponseRecorder
 // then executes the request by calling ServeHTTP in the router
 // after which the handler writes the response to the response recorder
@@ -50,7 +52,7 @@ func TestUnknownHandlers(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository)
+	srv := server.New(repository, key)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
@@ -90,7 +92,7 @@ func TestGaugeHandlers(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository)
+	srv := server.New(repository, key)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
@@ -130,7 +132,7 @@ func TestCounterHandlers(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository)
+	srv := server.New(repository, key)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
@@ -179,7 +181,7 @@ func TestCounter(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository)
+	srv := server.New(repository, key)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
@@ -250,7 +252,7 @@ func TestGauge(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository)
+	srv := server.New(repository, key)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
