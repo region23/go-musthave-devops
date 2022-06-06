@@ -143,7 +143,7 @@ func report(curMetric metrics.Metric, key string) metrics.Metric {
 			if s, err := strconv.ParseFloat(mValue, 64); err == nil {
 				metricToSend.Value = &s
 				if key != "" {
-					metricToSend.Hash = serializers.Hash(mType, mName, mValue, key)
+					metricToSend.Hash = serializers.Hash(mType, mName, fmt.Sprintf("%f", s), key)
 				}
 
 			} else {
@@ -154,7 +154,7 @@ func report(curMetric metrics.Metric, key string) metrics.Metric {
 			if s, err := strconv.ParseInt(mValue, 10, 64); err == nil {
 				metricToSend.Delta = &s
 				if key != "" {
-					metricToSend.Hash = serializers.Hash(mType, mName, mValue, key)
+					metricToSend.Hash = serializers.Hash(mType, mName, fmt.Sprintf("%d", s), key)
 				}
 			} else {
 				log.Panic(err)
