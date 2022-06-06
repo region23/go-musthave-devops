@@ -10,7 +10,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/region23/go-musthave-devops/internal/serializers"
-	mw "github.com/region23/go-musthave-devops/internal/server/middleware"
 	"github.com/region23/go-musthave-devops/internal/server/storage"
 )
 
@@ -32,8 +31,8 @@ func (s *Server) MountHandlers() {
 	// Mount all Middleware here
 	s.Router.Use(middleware.Logger)
 	s.Router.Use(middleware.StripSlashes)
-	//s.Router.Use(middleware.Compress(5))
-	s.Router.Use(mw.GZipHandle)
+	s.Router.Use(middleware.Compress(5))
+	//s.Router.Use(mw.GZipHandle)
 	// Mount all handlers here
 	s.Router.Get("/", s.AllMetrics)
 	s.Router.Post("/update", s.UpdateMetricJSON)
