@@ -79,7 +79,7 @@ func main() {
 		}
 	}()
 
-	srv := server.New(repository)
+	srv := server.New(repository, cfg.Key)
 	srv.MountHandlers()
 
 	http.ListenAndServe(cfg.Address, srv.Router)
