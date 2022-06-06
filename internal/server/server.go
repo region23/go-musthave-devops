@@ -121,6 +121,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		if metrics.Hash != serverGeneratedHash {
 			fmt.Printf("Хэш от клиента %v не равен хэшу вычисленному на сервере %v\n", metrics.Hash, serverGeneratedHash)
 			http.Error(w, "Hash is not valid", http.StatusBadRequest)
+			return
 		}
 	}
 
