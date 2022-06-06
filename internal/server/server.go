@@ -170,13 +170,17 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println(metrics)
+
 	metrics, err = s.storage.Get(metrics.ID)
 
 	// Если хэш не пустой, то сверяем хэши
 	if s.Key != "" {
 		fmt.Println("KEY: ", s.Key)
+
 		var serverGeneratedHash string
 		if metrics.MType == "gauge" {
+			fmt.Println(*metrics.Value)
 			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%g", *metrics.Value), s.Key)
 		} else if metrics.MType == "counter" {
 			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, strconv.FormatInt(*metrics.Delta, 10), s.Key)
