@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -27,6 +30,7 @@ type Config struct {
 	Address        string        `env:"ADDRESS"`
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
 	PollInterval   time.Duration `env:"POLL_INTERVAL"`
+	Key            string        `env:"KEY"`
 }
 
 var cfg Config = Config{}
@@ -35,6 +39,7 @@ func init() {
 	flag.StringVar(&cfg.Address, "a", "127.0.0.1:8080", "server address")
 	flag.DurationVar(&cfg.ReportInterval, "r", 10*time.Second, "report interval")
 	flag.DurationVar(&cfg.PollInterval, "p", 2*time.Second, "poll interval")
+	flag.StringVar(&cfg.Key, "k", "", "key for hashing")
 }
 
 func getMetrics(curMetric metrics.Metric) metrics.Metric {
@@ -120,7 +125,7 @@ func sendMetric(metricToSend serializers.Metrics) error {
 }
 
 // Отправка метрик на сервер
-func report(curMetric metrics.Metric) metrics.Metric {
+func report(curMetric metrics.Metric, key string) metrics.Metric {
 	var mType, mName, mValue string
 	v := reflect.ValueOf(curMetric)
 	typeOfS := v.Type()
@@ -140,6 +145,10 @@ func report(curMetric metrics.Metric) metrics.Metric {
 		if mType == "gauge" {
 			if s, err := strconv.ParseFloat(mValue, 64); err == nil {
 				metricToSend.Value = &s
+				if key != "" {
+					metricToSend.Hash = hash(fmt.Sprintf("%s:gauge:%s", mName, mValue), key)
+				}
+
 			} else {
 				log.Panic(err)
 			}
@@ -147,6 +156,9 @@ func report(curMetric metrics.Metric) metrics.Metric {
 		} else if mType == "counter" {
 			if s, err := strconv.ParseInt(mValue, 10, 64); err == nil {
 				metricToSend.Delta = &s
+				if key != "" {
+					metricToSend.Hash = hash(fmt.Sprintf("%s:counter:%s", mName, mValue), key)
+				}
 			} else {
 				log.Panic(err)
 			}
@@ -160,6 +172,12 @@ func report(curMetric metrics.Metric) metrics.Metric {
 
 	curMetric.PollCount = 1
 	return curMetric
+}
+
+func hash(str, key string) string {
+	h := hmac.New(sha256.New, []byte(key))
+	h.Write([]byte(str))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func main() {
@@ -182,7 +200,7 @@ func main() {
 		case <-pollTick.C:
 			curMetric = getMetrics(curMetric)
 		case <-reportTick.C:
-			curMetric = report(curMetric)
+			curMetric = report(curMetric, cfg.Key)
 		case <-osSigChan:
 			os.Exit(0)
 		}
