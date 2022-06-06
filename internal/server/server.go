@@ -113,7 +113,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	if metrics.Hash != "" && metrics.Hash != "none" && s.Key != "" {
 		var serverGeneratedHash string
 		if metrics.MType == "gauge" {
-			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%g", *metrics.Value), s.Key)
+			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%f", *metrics.Value), s.Key)
 		} else if metrics.MType == "counter" {
 			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, strconv.FormatInt(*metrics.Delta, 10), s.Key)
 		}
@@ -155,7 +155,7 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 	if metric.MType == "counter" {
 		w.Write([]byte(strconv.FormatInt(*metric.Delta, 10)))
 	} else if metric.MType == "gauge" {
-		w.Write([]byte(fmt.Sprintf("%g", *metric.Value)))
+		w.Write([]byte(fmt.Sprintf("%f", *metric.Value)))
 	}
 }
 
@@ -175,7 +175,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	if s.Key != "" {
 		var serverGeneratedHash string
 		if metrics.MType == "gauge" {
-			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%g", *metrics.Value), s.Key)
+			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%f", *metrics.Value), s.Key)
 		} else if metrics.MType == "counter" {
 			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, strconv.FormatInt(*metrics.Delta, 10), s.Key)
 		}
