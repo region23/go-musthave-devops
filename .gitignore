@@ -23,3 +23,14 @@ vendor/
 # IDEs directories
 .idea
 .vscode
+
+data/
+
+.DS_Store
+*.sqlite3
+*.pyc
+*.db
+*.pid
+*.txt
+
+.env

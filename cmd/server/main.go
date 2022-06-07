@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -11,9 +12,12 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v6"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/region23/go-musthave-devops/internal/server"
 	"github.com/region23/go-musthave-devops/internal/server/storage"
 )
+
+var dbpool *pgxpool.Pool
 
 type Config struct {
 	Address       string        `env:"ADDRESS"`
@@ -21,6 +25,7 @@ type Config struct {
 	StoreFile     string        `env:"STORE_FILE"`
 	Restore       bool          `env:"RESTORE"`
 	Key           string        `env:"KEY"`
+	DatabaseDSN   string        `env:"DATABASE_DSN"`
 }
 
 var cfg Config = Config{}
@@ -31,6 +36,7 @@ func init() {
 	flag.DurationVar(&cfg.StoreInterval, "i", 300*time.Second, "store interval")
 	flag.StringVar(&cfg.StoreFile, "f", "/tmp/devops-metrics-db.json", "path to file for metrics store")
 	flag.StringVar(&cfg.Key, "k", "", "key for hashing")
+	flag.StringVar(&cfg.DatabaseDSN, "d", "", "database connection string")
 }
 
 func main() {
@@ -45,41 +51,53 @@ func main() {
 
 	repository := storage.NewInMemory()
 
-	consumer, err := storage.NewConsumer(cfg.StoreFile)
-	if err != nil {
-		log.Fatalf("%+v\n", err)
-	}
-
-	if cfg.Restore {
-		metricsFromFile, err := consumer.ReadMetrics()
+	if cfg.DatabaseDSN == "" {
+		consumer, err := storage.NewConsumer(cfg.StoreFile)
 		if err != nil {
 			log.Fatalf("%+v\n", err)
 		}
 
-		repository.UpdateAll(*metricsFromFile)
-	}
-
-	producer, err := storage.NewProducer(cfg.StoreFile)
-	if err != nil {
-		log.Fatalf("%+v\n", err)
-	}
-
-	storeIntervalTick := time.NewTicker(cfg.StoreInterval)
-	go func() {
-		for {
-			select {
-			case <-storeIntervalTick.C:
-				metrics := repository.All()
-				producer.WriteMetrics(metrics)
-			case <-osSigChan:
-				metrics := repository.All()
-				producer.WriteMetrics(metrics)
-				os.Exit(0)
+		if cfg.Restore {
+			metricsFromFile, err := consumer.ReadMetrics()
+			if err != nil {
+				log.Fatalf("%+v\n", err)
 			}
-		}
-	}()
 
-	srv := server.New(repository, cfg.Key)
+			repository.UpdateAll(*metricsFromFile)
+		}
+
+		producer, err := storage.NewProducer(cfg.StoreFile)
+		if err != nil {
+			log.Fatalf("%+v\n", err)
+		}
+
+		storeIntervalTick := time.NewTicker(cfg.StoreInterval)
+		go func() {
+			for {
+				select {
+				case <-storeIntervalTick.C:
+					metrics := repository.All()
+					producer.WriteMetrics(metrics)
+				case <-osSigChan:
+					metrics := repository.All()
+					producer.WriteMetrics(metrics)
+					os.Exit(0)
+				}
+			}
+		}()
+	} else {
+		// Инициализируем подключение к базе данных
+		var err error
+		dbpool, err = pgxpool.Connect(context.Background(), cfg.DatabaseDSN)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to connection to database: %v\n", err)
+			os.Exit(1)
+		}
+		defer dbpool.Close()
+
+	}
+
+	srv := server.New(repository, cfg.Key, dbpool)
 	srv.MountHandlers()
 
 	http.ListenAndServe(cfg.Address, srv.Router)

@@ -1,0 +1,16 @@
+version: "3.7"
+
+services:
+  postgres:
+    restart: unless-stopped
+    image: postgres:14 
+    container_name: ya_postgres
+    environment:
+      - POSTGRES_DB=devops_metrics
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - 5432:5432
+    volumes:
+      - ./data/pgdata:/var/lib/postgresql/data:rw
+

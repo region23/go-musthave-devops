@@ -9,22 +9,26 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/region23/go-musthave-devops/internal/serializers"
 	mw "github.com/region23/go-musthave-devops/internal/server/middleware"
 	"github.com/region23/go-musthave-devops/internal/server/storage"
+	"github.com/region23/go-musthave-devops/internal/server/storage/database"
 )
 
 type Server struct {
 	storage storage.Repository
 	Router  *chi.Mux
 	Key     string
+	DbPool  *pgxpool.Pool
 }
 
-func New(storage storage.Repository, key string) *Server {
+func New(storage storage.Repository, key string, dbpool *pgxpool.Pool) *Server {
 	return &Server{
 		storage: storage,
 		Router:  chi.NewRouter(),
 		Key:     key,
+		DbPool:  dbpool,
 	}
 }
 
@@ -40,6 +44,7 @@ func (s *Server) MountHandlers() {
 	s.Router.Post("/update/{metricType}/{metricName}/{metricValue}", s.UpdateMetric)
 	s.Router.Post("/value", s.GetMetricJSON)
 	s.Router.Get("/value/{metricType}/{metricName}", s.GetMetric)
+	s.Router.Get("/ping", s.Ping)
 
 }
 
@@ -206,4 +211,18 @@ func (s *Server) AllMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	tmpl.Execute(w, s.storage.All())
+}
+
+// Проверяем соединение с базой данных
+func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
+	err := database.Ping(s.DbPool)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Ping OK"))
 }
