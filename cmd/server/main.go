@@ -95,6 +95,15 @@ func main() {
 		}
 		defer dbpool.Close()
 
+		go func() {
+			for {
+				select {
+				case <-osSigChan:
+					os.Exit(0)
+				}
+			}
+		}()
+
 	}
 
 	srv := server.New(repository, cfg.Key, dbpool)
