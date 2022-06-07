@@ -50,7 +50,7 @@ func TestUnknownHandlers(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository, key)
+	srv := server.New(repository, key, nil)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
@@ -90,7 +90,7 @@ func TestGaugeHandlers(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository, key)
+	srv := server.New(repository, key, nil)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
@@ -130,7 +130,7 @@ func TestCounterHandlers(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository, key)
+	srv := server.New(repository, key, nil)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
@@ -179,7 +179,7 @@ func TestCounter(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository, key)
+	srv := server.New(repository, key, nil)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
@@ -250,7 +250,7 @@ func TestGauge(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository, key)
+	srv := server.New(repository, key, nil)
 	srv.MountHandlers()
 
 	for _, tt := range tests {

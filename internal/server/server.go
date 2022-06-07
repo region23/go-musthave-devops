@@ -20,7 +20,7 @@ type Server struct {
 	storage storage.Repository
 	Router  *chi.Mux
 	Key     string
-	DbPool  *pgxpool.Pool
+	DBPool  *pgxpool.Pool
 }
 
 func New(storage storage.Repository, key string, dbpool *pgxpool.Pool) *Server {
@@ -28,7 +28,7 @@ func New(storage storage.Repository, key string, dbpool *pgxpool.Pool) *Server {
 		storage: storage,
 		Router:  chi.NewRouter(),
 		Key:     key,
-		DbPool:  dbpool,
+		DBPool:  dbpool,
 	}
 }
 
@@ -215,7 +215,7 @@ func (s *Server) AllMetrics(w http.ResponseWriter, r *http.Request) {
 
 // Проверяем соединение с базой данных
 func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
-	err := database.Ping(s.DbPool)
+	err := database.Ping(s.DBPool)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
