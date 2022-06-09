@@ -76,7 +76,7 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	metric := serializers.NewMetrics(metricName, metricType, metricValue)
 
 	// write metric to repository
-	err := s.storage.Put(metric)
+	err := s.storage.Put(&metric)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
 		return
@@ -130,7 +130,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// write metric to repository
-	err = s.storage.Put(metrics)
+	err = s.storage.Put(&metrics)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
 		return
@@ -164,7 +164,7 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 // Ручка возвращающая значение метрики
 func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
-	var metrics serializers.Metrics
+	metrics := &serializers.Metrics{}
 	// decode input or return error
 	err := json.NewDecoder(r.Body).Decode(&metrics)
 	if err != nil {
@@ -173,6 +173,11 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	metrics, err = s.storage.Get(metrics.ID)
+
+	if metrics == nil {
+		http.Error(w, "Metric not found", http.StatusNotFound)
+		return
+	}
 
 	// Если хэш не пустой, то сверяем хэши
 	if s.Key != "" {
@@ -210,7 +215,12 @@ func (s *Server) AllMetrics(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	tmpl.Execute(w, s.storage.All())
+	metrics, err := s.storage.All()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Ошибка при получении метрик: %v", err.Error()), http.StatusInternalServerError)
+	}
+
+	tmpl.Execute(w, metrics)
 }
 
 // Проверяем соединение с базой данных

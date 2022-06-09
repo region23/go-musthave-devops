@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/region23/go-musthave-devops/internal/server"
 	"github.com/region23/go-musthave-devops/internal/server/storage"
+	"github.com/region23/go-musthave-devops/internal/server/storage/database"
 )
 
 var dbpool *pgxpool.Pool
@@ -49,9 +50,10 @@ func main() {
 	osSigChan := make(chan os.Signal, 1)
 	signal.Notify(osSigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	repository := storage.NewInMemory()
+	var repository storage.Repository
 
 	if cfg.DatabaseDSN == "" {
+		repository = storage.NewInMemory()
 		consumer, err := storage.NewConsumer(cfg.StoreFile)
 		if err != nil {
 			log.Fatalf("%+v\n", err)
@@ -63,7 +65,10 @@ func main() {
 				log.Fatalf("%+v\n", err)
 			}
 
-			repository.UpdateAll(*metricsFromFile)
+			repository.UpdateAll(metricsFromFile)
+			if err != nil {
+				log.Fatalf("%+v\n", err)
+			}
 		}
 
 		producer, err := storage.NewProducer(cfg.StoreFile)
@@ -76,10 +81,20 @@ func main() {
 			for {
 				select {
 				case <-storeIntervalTick.C:
-					metrics := repository.All()
+					metrics, err := repository.All()
+
+					if err != nil {
+						log.Fatalf("%+v\n", err)
+					}
+
 					producer.WriteMetrics(metrics)
 				case <-osSigChan:
-					metrics := repository.All()
+					metrics, err := repository.All()
+
+					if err != nil {
+						log.Fatalf("%+v\n", err)
+					}
+
 					producer.WriteMetrics(metrics)
 					os.Exit(0)
 				}
@@ -93,12 +108,21 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Unable to connection to database: %v\n", err)
 			os.Exit(1)
 		}
+
+		err = database.InitDB(dbpool)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to connection to database: %v\n", err)
+			os.Exit(1)
+		}
+
 		defer dbpool.Close()
 
 		go func() {
 			<-osSigChan
 			os.Exit(0)
 		}()
+
+		repository = database.NewInDatabase(dbpool, cfg.Key)
 
 	}
 
