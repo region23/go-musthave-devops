@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var key = "test"
+
 // executeRequest, creates a new ResponseRecorder
 // then executes the request by calling ServeHTTP in the router
 // after which the handler writes the response to the response recorder

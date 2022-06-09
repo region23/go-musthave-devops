@@ -13,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var key = "test"
-
 func TestUnknownHandlersJSON(t *testing.T) {
 	tests := []struct {
 		name           string
