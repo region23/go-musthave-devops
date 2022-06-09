@@ -26,13 +26,13 @@ func TestServer_UpdateMetric(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Server{
+			srv := &Server{
 				storage: tt.fields.repository,
 				Router:  tt.fields.Router,
 				Key:     "",
 				DBPool:  nil,
 			}
-			s.UpdateMetric(tt.args.w, tt.args.r)
+			srv.UpdateMetric(tt.args.w, tt.args.r)
 		})
 	}
 }
