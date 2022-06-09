@@ -47,7 +47,7 @@ func InitDB(dbpool *pgxpool.Pool) error {
 		metric_type VARCHAR(10) not null,
 		delta BIGINT DEFAULT NULL,
 		gauge double precision DEFAULT NULL,
-		hash VARCHAR(32) DEFAULT NULL
+		hash VARCHAR(64) DEFAULT NULL
 	  );`
 
 	ctx, cancelfunc := context.WithTimeout(context.Background(), 5*time.Second)
