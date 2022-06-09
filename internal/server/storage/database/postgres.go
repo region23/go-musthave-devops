@@ -86,6 +86,7 @@ func (storage *InDatabase) Get(key string) (*serializers.Metrics, error) {
 }
 
 func (storage *InDatabase) Put(metric *serializers.Metrics) error {
+
 	// если это counter, то извлекаем из базы последнее значение счетчика и увеличиваем его на значение метрики
 	if metric.MType == "counter" {
 		metricFromDB, err := storage.Get(metric.ID)
@@ -147,7 +148,16 @@ func (storage *InDatabase) All() (map[string]serializers.Metrics, error) {
 }
 
 func (storage *InDatabase) UpdateAll(m map[string]serializers.Metrics) error {
-	err := storage.deleteAll()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	tx, err := storage.dbpool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback(ctx)
+
+	err = storage.deleteAll(tx)
 	if err != nil {
 		return err
 	}
@@ -158,7 +168,7 @@ func (storage *InDatabase) UpdateAll(m map[string]serializers.Metrics) error {
 		rows = append(rows, []interface{}{metric.ID, metric.MType, metric.Delta, metric.Value, metric.Hash})
 	}
 
-	_, err = storage.dbpool.CopyFrom(context.Background(),
+	_, err = tx.CopyFrom(ctx,
 		pgx.Identifier{"metrics"},
 		[]string{"id", "metric_type", "delta", "gauge", "hash"},
 		pgx.CopyFromRows(rows),
@@ -168,14 +178,23 @@ func (storage *InDatabase) UpdateAll(m map[string]serializers.Metrics) error {
 		return err
 	}
 
-	return nil
+	_, err = storage.dbpool.CopyFrom(ctx,
+		pgx.Identifier{"metrics"},
+		[]string{"id", "metric_type", "delta", "gauge", "hash"},
+		pgx.CopyFromRows(rows),
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 
 }
 
 // Удаляет все записи из таблицы metrics
-func (storage *InDatabase) deleteAll() error {
-	ct, err := storage.dbpool.Exec(context.Background(),
-		"DELETE FROM metrics")
+func (storage *InDatabase) deleteAll(tx pgx.Tx) error {
+	ct, err := tx.Exec(context.Background(), `DELETE FROM metrics`)
 
 	if err != nil {
 		log.Printf("Unable to DELETE: %v\n", err)

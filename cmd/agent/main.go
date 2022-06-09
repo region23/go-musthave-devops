@@ -80,14 +80,14 @@ func getMetrics(curMetric metrics.Metric) metrics.Metric {
 }
 
 // Отправляем метрику на сервер
-func sendMetric(metricToSend serializers.Metrics) error {
+func sendMetric(metricsToSend []serializers.Metrics) error {
 	u := url.URL{
 		Scheme: "http",
 		Host:   cfg.Address,
-		Path:   "update",
+		Path:   "updates",
 	}
 
-	postBody, err := json.Marshal(metricToSend)
+	postBody, err := json.Marshal(metricsToSend)
 
 	if err != nil {
 		return err
@@ -123,6 +123,8 @@ func sendMetric(metricToSend serializers.Metrics) error {
 
 // Отправка метрик на сервер
 func report(curMetric metrics.Metric, key string) metrics.Metric {
+	metricsBatch := []serializers.Metrics{}
+
 	var mType, mName, mValue string
 	v := reflect.ValueOf(curMetric)
 	typeOfS := v.Type()
@@ -161,7 +163,9 @@ func report(curMetric metrics.Metric, key string) metrics.Metric {
 			}
 		}
 
-		err := sendMetric(metricToSend)
+		metricsBatch = append(metricsBatch, metricToSend)
+
+		err := sendMetric(metricsBatch)
 		if err != nil {
 			fmt.Println(err)
 		}

@@ -40,6 +40,7 @@ func (s *Server) MountHandlers() {
 	s.Router.Use(mw.GZipHandle)
 	// Mount all handlers here
 	s.Router.Get("/", s.AllMetrics)
+	s.Router.Post("/updates", s.UpdateBatchMetricsJSON)
 	s.Router.Post("/update", s.UpdateMetricJSON)
 	s.Router.Post("/update/{metricType}/{metricName}/{metricValue}", s.UpdateMetric)
 	s.Router.Post("/value", s.GetMetricJSON)
@@ -86,6 +87,63 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`Metric updated`))
+}
+
+// Ручка обновляющая пачку метрик
+func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) {
+	var metrics []serializers.Metrics
+
+	// decode input or return error
+	err := json.NewDecoder(r.Body).Decode(&metrics)
+	if err != nil {
+		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
+		return
+	}
+
+	if len(metrics) == 0 {
+		http.Error(w, "Metric name can't be empty", http.StatusNotFound)
+		return
+	}
+
+	for _, metric := range metrics {
+		if metric.Value == nil && metric.Delta == nil {
+			http.Error(w, "Value can't be nil", http.StatusBadRequest)
+			return
+		}
+
+		if metric.MType != "gauge" && metric.MType != "counter" {
+			http.Error(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
+			return
+		}
+
+		// Если хэш не пустой, то сверяем хэши
+		if s.Key != "" && metric.Hash != "" && metric.Hash != "none" {
+			var serverGeneratedHash string
+			if metric.MType == "gauge" {
+				serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%f", *metric.Value), s.Key)
+			} else if metric.MType == "counter" {
+				serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%d", *metric.Delta), s.Key)
+			}
+
+			if metric.Hash != serverGeneratedHash {
+				http.Error(w, "Hash is not valid", http.StatusBadRequest)
+				return
+			}
+		}
+
+		// write metric to repository
+		err = s.storage.Put(&metric)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
+			return
+		}
+
+	}
+
+	// response answer
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`Metrics updated`))
 }
 
 // Ручка обновляющая значение метрики
