@@ -53,7 +53,7 @@ func main() {
 	var repository storage.Repository
 
 	if cfg.DatabaseDSN == "" {
-		log.Println("DSN пуст, используется файловое хранилище")
+		fmt.Println("DSN пуст, используется файловое хранилище")
 		repository = storage.NewInMemory()
 		consumer, err := storage.NewConsumer(cfg.StoreFile)
 		if err != nil {

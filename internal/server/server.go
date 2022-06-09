@@ -166,7 +166,7 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	metrics := &serializers.Metrics{}
 	// decode input or return error
-	err := json.NewDecoder(r.Body).Decode(&metrics)
+	err := json.NewDecoder(r.Body).Decode(metrics)
 	if err != nil {
 		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
 		return
