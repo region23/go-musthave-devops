@@ -164,15 +164,20 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 // Ручка возвращающая значение метрики
 func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
-	metrics := serializers.Metrics{}
+	metrics := &serializers.Metrics{}
 	// decode input or return error
-	err := json.NewDecoder(r.Body).Decode(&metrics)
+	err := json.NewDecoder(r.Body).Decode(metrics)
 	if err != nil {
 		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
 		return
 	}
 
 	metrics, err = s.storage.Get(metrics.ID)
+
+	if metrics == nil {
+		http.Error(w, "Metric not found", http.StatusNotFound)
+		return
+	}
 
 	// Если хэш не пустой, то сверяем хэши
 	if s.Key != "" {

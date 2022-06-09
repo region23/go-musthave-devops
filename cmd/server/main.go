@@ -110,6 +110,8 @@ func main() {
 			os.Exit(1)
 		}
 
+		log.Println("Подключение к базе данных успешно произведено")
+
 		err = database.InitDB(dbpool)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to connection to database: %v\n", err)
@@ -126,6 +128,8 @@ func main() {
 		repository = database.NewInDatabase(dbpool, cfg.Key)
 
 	}
+
+	log.Println("Starting server...")
 
 	srv := server.New(repository, cfg.Key, dbpool)
 	srv.MountHandlers()

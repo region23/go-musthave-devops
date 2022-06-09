@@ -17,13 +17,13 @@ func NewInMemory() Repository {
 	}
 }
 
-func (s *InMemory) Get(key string) (serializers.Metrics, error) {
+func (s *InMemory) Get(key string) (*serializers.Metrics, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if v, ok := s.m[key]; ok {
-		return v, nil
+		return &v, nil
 	}
-	return serializers.Metrics{}, ErrNotFound
+	return nil, ErrNotFound
 }
 
 func (s *InMemory) Put(metric *serializers.Metrics) error {

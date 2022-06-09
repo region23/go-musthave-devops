@@ -43,11 +43,11 @@ func Ping(dbpool *pgxpool.Pool) error {
 // Если её нет, то создать.
 func InitDB(dbpool *pgxpool.Pool) error {
 	query := `CREATE TABLE IF NOT EXISTS metrics (
-		id VARCHAR(50) primary key,
-		metric_type(10) VARCHAR not null,
+		id VARCHAR(50) UNIQUE,
+		metric_type VARCHAR(10) not null,
 		delta BIGINT DEFAULT NULL,
 		gauge double precision DEFAULT NULL,
-		hash VARCHAR(32) DEFAULT NULL,
+		hash VARCHAR(32) DEFAULT NULL
 	  );`
 
 	ctx, cancelfunc := context.WithTimeout(context.Background(), 5*time.Second)
@@ -65,7 +65,7 @@ func InitDB(dbpool *pgxpool.Pool) error {
 }
 
 // извлекает метрику из базы данных
-func (storage *InDatabase) Get(key string) (serializers.Metrics, error) {
+func (storage *InDatabase) Get(key string) (*serializers.Metrics, error) {
 	row := storage.dbpool.QueryRow(context.Background(),
 		`SELECT id, metric_type, delta, gauge, hash FROM metrics WHERE id = $1`,
 		key)
@@ -76,11 +76,11 @@ func (storage *InDatabase) Get(key string) (serializers.Metrics, error) {
 
 	switch err {
 	case nil:
-		return metric, nil
+		return &metric, nil
 	case pgx.ErrNoRows:
-		return serializers.Metrics{}, errors.New("no rows")
+		return nil, pgx.ErrNoRows
 	default:
-		return serializers.Metrics{}, err
+		return nil, err
 	}
 
 }
@@ -88,16 +88,18 @@ func (storage *InDatabase) Get(key string) (serializers.Metrics, error) {
 func (storage *InDatabase) Put(metric *serializers.Metrics) error {
 	// если это counter, то извлекаем из базы последнее значение счетчика и увеличиваем его на значение метрики
 	if metric.MType == "counter" {
-		newMetric, err := storage.Get(metric.ID)
-		if err != nil {
+		metricFromDb, err := storage.Get(metric.ID)
+		if err != nil && err != pgx.ErrNoRows {
 			return err
 		}
 
-		*metric.Delta = *newMetric.Delta + *metric.Delta
+		if err == nil {
+			*metric.Delta = *metricFromDb.Delta + *metric.Delta
 
-		// обновим хэш метрики
-		if storage.key != "" {
-			metric.Hash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%d", *metric.Delta), storage.key)
+			// обновим хэш метрики
+			if storage.key != "" {
+				metric.Hash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%d", *metric.Delta), storage.key)
+			}
 		}
 	}
 
