@@ -88,13 +88,13 @@ func (storage *InDatabase) Get(key string) (*serializers.Metrics, error) {
 func (storage *InDatabase) Put(metric *serializers.Metrics) error {
 	// если это counter, то извлекаем из базы последнее значение счетчика и увеличиваем его на значение метрики
 	if metric.MType == "counter" {
-		metricFromDb, err := storage.Get(metric.ID)
+		metricFromDB, err := storage.Get(metric.ID)
 		if err != nil && err != pgx.ErrNoRows {
 			return err
 		}
 
 		if err == nil {
-			*metric.Delta = *metricFromDb.Delta + *metric.Delta
+			*metric.Delta = *metricFromDB.Delta + *metric.Delta
 
 			// обновим хэш метрики
 			if storage.key != "" {
