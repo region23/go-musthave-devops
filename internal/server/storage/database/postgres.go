@@ -65,7 +65,7 @@ func InitDB(dbpool *pgxpool.Pool) error {
 }
 
 // извлекает метрику из базы данных
-func (storage *InDatabase) Get(key string) (*serializers.Metrics, error) {
+func (storage *InDatabase) Get(key string) (serializers.Metrics, error) {
 	row := storage.dbpool.QueryRow(context.Background(),
 		`SELECT id, metric_type, delta, gauge, hash FROM metrics WHERE id = $1`,
 		key)
@@ -76,11 +76,11 @@ func (storage *InDatabase) Get(key string) (*serializers.Metrics, error) {
 
 	switch err {
 	case nil:
-		return &metric, nil
+		return metric, nil
 	case pgx.ErrNoRows:
-		return nil, errors.New("no rows")
+		return serializers.Metrics{}, errors.New("no rows")
 	default:
-		return nil, err
+		return serializers.Metrics{}, err
 	}
 
 }
