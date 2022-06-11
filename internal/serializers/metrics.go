@@ -32,18 +32,20 @@ func NewMetrics(id string, mtype string, val ...interface{}) Metrics {
 	case float64:
 		m.Value = &v
 	case string:
-		if mtype == "counter" {
-			convertedV, err := strconv.ParseInt(v, 10, 64)
-			if err != nil {
-				log.Error().Err(err).Msg("Ошибка при парсинге числа счетчика метрики")
+		if v != "none" {
+			if mtype == "counter" {
+				convertedV, err := strconv.ParseInt(v, 10, 64)
+				if err != nil {
+					log.Error().Err(err).Msg("Ошибка при парсинге числа счетчика метрики")
+				}
+				m.Delta = &convertedV
+			} else if mtype == "gauge" {
+				convertedV, err := strconv.ParseFloat(v, 64)
+				if err != nil {
+					log.Error().Err(err).Msg("Ошибка при парсинге числа метрики")
+				}
+				m.Value = &convertedV
 			}
-			m.Delta = &convertedV
-		} else if mtype == "gauge" {
-			convertedV, err := strconv.ParseFloat(v, 64)
-			if err != nil {
-				log.Error().Err(err).Msg("Ошибка при парсинге числа метрики")
-			}
-			m.Value = &convertedV
 		}
 	default:
 	}
