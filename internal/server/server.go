@@ -55,6 +55,11 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	metricName := chi.URLParam(r, "metricName")
 	metricValue := chi.URLParam(r, "metricValue")
 
+	if metricValue == "none" {
+		http.Error(w, "Неверное значение метрики", http.StatusBadRequest)
+		return
+	}
+
 	if metricType != "gauge" && metricType != "counter" {
 		http.Error(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
 		return
