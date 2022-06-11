@@ -106,10 +106,10 @@ func sendMetric(metricsToSend []serializers.Metrics) error {
 	if err != nil {
 		return err
 	}
-
 	// печатаем код ответа
 	log.Debug().Msgf("Статус-код %v", response.Status)
 	defer response.Body.Close()
+
 	// читаем поток из тела ответа
 	body, err := io.ReadAll(response.Body)
 	if err != nil {

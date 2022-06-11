@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -53,14 +54,14 @@ func InitDB(dbpool *pgxpool.Pool) error {
 	ctx, cancelfunc := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelfunc()
 
-	res, err := dbpool.Exec(ctx, query)
+	_, err := dbpool.Exec(ctx, query)
 	if err != nil {
-		log.Printf("Error %s when creating product table", err)
+		log.Error().Err(err).Msg("Error when creating product table")
 		return err
 	}
 
-	rows := res.RowsAffected()
-	log.Printf("Rows affected when creating table: %d", rows)
+	//rows := res.RowsAffected()
+	//log.Printf("Rows affected when creating table: %d", rows)
 	return nil
 }
 
@@ -116,7 +117,7 @@ func (storage *InDatabase) Put(metric *serializers.Metrics) error {
 		metric.Hash)
 
 	if err != nil {
-		log.Printf("Unable to INSERT: %v\n", err)
+		log.Error().Err(err).Msg("Unable to INSERT metric to DB")
 		return err
 	}
 
@@ -197,7 +198,7 @@ func (storage *InDatabase) deleteAll(tx pgx.Tx) error {
 	ct, err := tx.Exec(context.Background(), `DELETE FROM metrics`)
 
 	if err != nil {
-		log.Printf("Unable to DELETE: %v\n", err)
+		log.Error().Err(err).Msg("Unable to DELETE metrics from DB")
 		return err
 	}
 

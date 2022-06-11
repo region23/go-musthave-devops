@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +14,7 @@ import (
 	"github.com/region23/go-musthave-devops/internal/server"
 	"github.com/region23/go-musthave-devops/internal/server/storage"
 	"github.com/region23/go-musthave-devops/internal/server/storage/database"
+	"github.com/rs/zerolog/log"
 )
 
 var dbpool *pgxpool.Pool
@@ -44,7 +43,7 @@ func main() {
 	flag.Parse()
 
 	if err := env.Parse(&cfg); err != nil {
-		fmt.Printf("%+v\n", err)
+		log.Error().Err(err).Msgf("%+v\n", err)
 	}
 
 	osSigChan := make(chan os.Signal, 1)
@@ -53,28 +52,27 @@ func main() {
 	var repository storage.Repository
 
 	if cfg.DatabaseDSN == "" {
-		fmt.Println("DSN пуст, используется файловое хранилище")
 		repository = storage.NewInMemory()
 		consumer, err := storage.NewConsumer(cfg.StoreFile)
 		if err != nil {
-			log.Fatalf("%+v\n", err)
+			log.Panic().Err(err).Msg("Не смогли инициализировать консумера")
 		}
 
 		if cfg.Restore {
 			metricsFromFile, err := consumer.ReadMetrics()
 			if err != nil {
-				log.Fatalf("%+v\n", err)
+				log.Panic().Err(err).Msg("Не смогли прочитать метрики из консумера")
 			}
 
 			repository.UpdateAll(metricsFromFile)
 			if err != nil {
-				log.Fatalf("%+v\n", err)
+				log.Panic().Err(err).Msg("Не смогли обновить батч метрик в хранилище")
 			}
 		}
 
 		producer, err := storage.NewProducer(cfg.StoreFile)
 		if err != nil {
-			log.Fatalf("%+v\n", err)
+			log.Panic().Err(err).Msg("Не смогли инициализировать продюсера")
 		}
 
 		storeIntervalTick := time.NewTicker(cfg.StoreInterval)
@@ -85,7 +83,7 @@ func main() {
 					metrics, err := repository.All()
 
 					if err != nil {
-						log.Fatalf("%+v\n", err)
+						log.Panic().Err(err).Msg("Не смогли прочитать метрики из хранилища")
 					}
 
 					producer.WriteMetrics(metrics)
@@ -93,7 +91,7 @@ func main() {
 					metrics, err := repository.All()
 
 					if err != nil {
-						log.Fatalf("%+v\n", err)
+						log.Panic().Err(err).Msg("Не смогли прочитать метрики из хранилища")
 					}
 
 					producer.WriteMetrics(metrics)
@@ -106,16 +104,12 @@ func main() {
 		var err error
 		dbpool, err = pgxpool.Connect(context.Background(), cfg.DatabaseDSN)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to connection to database: %v\n", err)
-			os.Exit(1)
+			log.Fatal().Err(err).Msg("Не смогли подключиться к базе данных")
 		}
-
-		log.Println("Подключение к базе данных успешно произведено")
 
 		err = database.InitDB(dbpool)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to connection to database: %v\n", err)
-			os.Exit(1)
+			log.Fatal().Err(err).Msg("Не смогли подключиться к базе данных")
 		}
 
 		defer dbpool.Close()
@@ -129,7 +123,7 @@ func main() {
 
 	}
 
-	log.Println("Starting server...")
+	log.Debug().Msg("Starting server...")
 
 	srv := server.New(repository, cfg.Key, dbpool)
 	srv.MountHandlers()

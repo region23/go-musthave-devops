@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strconv"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Metrics struct {
@@ -32,14 +34,16 @@ func NewMetrics(id string, mtype string, val ...interface{}) Metrics {
 	case string:
 		if mtype == "counter" {
 			convertedV, err := strconv.ParseInt(v, 10, 64)
-			if err == nil {
-				m.Delta = &convertedV
+			if err != nil {
+				log.Error().Err(err).Msg("Ошибка при парсинге числа счетчика метрики")
 			}
+			m.Delta = &convertedV
 		} else if mtype == "gauge" {
 			convertedV, err := strconv.ParseFloat(v, 64)
-			if err == nil {
-				m.Value = &convertedV
+			if err != nil {
+				log.Error().Err(err).Msg("Ошибка при парсинге числа метрики")
 			}
+			m.Value = &convertedV
 		}
 	default:
 	}
