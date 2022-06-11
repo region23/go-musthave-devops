@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -21,6 +20,7 @@ import (
 	"github.com/caarlos0/env/v6"
 	"github.com/region23/go-musthave-devops/internal/metrics"
 	"github.com/region23/go-musthave-devops/internal/serializers"
+	"github.com/rs/zerolog/log"
 )
 
 type Config struct {
@@ -108,15 +108,15 @@ func sendMetric(metricsToSend []serializers.Metrics) error {
 	}
 
 	// печатаем код ответа
-	fmt.Println("Статус-код ", response.Status)
+	log.Debug().Msgf("Статус-код %v", response.Status)
 	defer response.Body.Close()
 	// читаем поток из тела ответа
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		fmt.Println(err)
+		log.Error().Err(err).Msg("Ошибка при чтении ответа")
 	}
 	// и печатаем его
-	fmt.Println(string(body))
+	log.Debug().Msg(string(body))
 
 	return nil
 }
@@ -149,7 +149,7 @@ func report(curMetric metrics.Metric, key string) metrics.Metric {
 				}
 
 			} else {
-				log.Panic(err)
+				log.Panic().Err(err).Msg("Ошибка при парсинге числа метрики")
 			}
 
 		} else if mType == "counter" {
@@ -159,7 +159,7 @@ func report(curMetric metrics.Metric, key string) metrics.Metric {
 					metricToSend.Hash = serializers.Hash(mType, mName, fmt.Sprintf("%d", s), key)
 				}
 			} else {
-				log.Panic(err)
+				log.Panic().Err(err).Msg("Ошибка при парсинге числа счетчика метрики")
 			}
 		}
 
@@ -167,7 +167,7 @@ func report(curMetric metrics.Metric, key string) metrics.Metric {
 
 		err := sendMetric(metricsBatch)
 		if err != nil {
-			fmt.Println(err)
+			log.Error().Err(err).Msg("Ошибка при отправке метрики на сервер")
 		}
 	}
 
@@ -179,7 +179,7 @@ func main() {
 	flag.Parse()
 
 	if err := env.Parse(&cfg); err != nil {
-		fmt.Printf("%+v\n", err)
+		log.Error().Err(err).Msgf("%+v\n", err)
 	}
 
 	var curMetric metrics.Metric
