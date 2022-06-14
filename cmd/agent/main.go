@@ -183,6 +183,7 @@ func main() {
 	}
 
 	var curMetric metrics.Metric
+
 	curMetric = getMetrics(curMetric)
 
 	osSigChan := make(chan os.Signal, 1)
