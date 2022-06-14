@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -21,12 +20,14 @@ import (
 	"github.com/caarlos0/env/v6"
 	"github.com/region23/go-musthave-devops/internal/metrics"
 	"github.com/region23/go-musthave-devops/internal/serializers"
+	"github.com/rs/zerolog/log"
 )
 
 type Config struct {
 	Address        string        `env:"ADDRESS"`
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
 	PollInterval   time.Duration `env:"POLL_INTERVAL"`
+	Key            string        `env:"KEY"`
 }
 
 var cfg Config = Config{}
@@ -35,6 +36,7 @@ func init() {
 	flag.StringVar(&cfg.Address, "a", "127.0.0.1:8080", "server address")
 	flag.DurationVar(&cfg.ReportInterval, "r", 10*time.Second, "report interval")
 	flag.DurationVar(&cfg.PollInterval, "p", 2*time.Second, "poll interval")
+	flag.StringVar(&cfg.Key, "k", "", "key for hashing")
 }
 
 func getMetrics(curMetric metrics.Metric) metrics.Metric {
@@ -78,14 +80,14 @@ func getMetrics(curMetric metrics.Metric) metrics.Metric {
 }
 
 // Отправляем метрику на сервер
-func sendMetric(metricToSend serializers.Metrics) error {
+func sendMetric(metricsToSend []serializers.Metrics) error {
 	u := url.URL{
 		Scheme: "http",
 		Host:   cfg.Address,
-		Path:   "update",
+		Path:   "updates",
 	}
 
-	postBody, err := json.Marshal(metricToSend)
+	postBody, err := json.Marshal(metricsToSend)
 
 	if err != nil {
 		return err
@@ -104,23 +106,25 @@ func sendMetric(metricToSend serializers.Metrics) error {
 	if err != nil {
 		return err
 	}
-
 	// печатаем код ответа
-	fmt.Println("Статус-код ", response.Status)
+	log.Debug().Msgf("Статус-код %v", response.Status)
 	defer response.Body.Close()
+
 	// читаем поток из тела ответа
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		fmt.Println(err)
+		log.Error().Err(err).Msg("Ошибка при чтении ответа")
 	}
 	// и печатаем его
-	fmt.Println(string(body))
+	log.Debug().Msg(string(body))
 
 	return nil
 }
 
 // Отправка метрик на сервер
-func report(curMetric metrics.Metric) metrics.Metric {
+func report(curMetric metrics.Metric, key string) metrics.Metric {
+	metricsBatch := []serializers.Metrics{}
+
 	var mType, mName, mValue string
 	v := reflect.ValueOf(curMetric)
 	typeOfS := v.Type()
@@ -140,21 +144,30 @@ func report(curMetric metrics.Metric) metrics.Metric {
 		if mType == "gauge" {
 			if s, err := strconv.ParseFloat(mValue, 64); err == nil {
 				metricToSend.Value = &s
+				if key != "" {
+					metricToSend.Hash = serializers.Hash(mType, mName, fmt.Sprintf("%f", s), key)
+				}
+
 			} else {
-				log.Panic(err)
+				log.Panic().Err(err).Msg("Ошибка при парсинге числа метрики")
 			}
 
 		} else if mType == "counter" {
 			if s, err := strconv.ParseInt(mValue, 10, 64); err == nil {
 				metricToSend.Delta = &s
+				if key != "" {
+					metricToSend.Hash = serializers.Hash(mType, mName, fmt.Sprintf("%d", s), key)
+				}
 			} else {
-				log.Panic(err)
+				log.Panic().Err(err).Msg("Ошибка при парсинге числа счетчика метрики")
 			}
 		}
 
-		err := sendMetric(metricToSend)
+		metricsBatch = append(metricsBatch, metricToSend)
+
+		err := sendMetric(metricsBatch)
 		if err != nil {
-			fmt.Println(err)
+			log.Error().Err(err).Msg("Ошибка при отправке метрики на сервер")
 		}
 	}
 
@@ -166,7 +179,7 @@ func main() {
 	flag.Parse()
 
 	if err := env.Parse(&cfg); err != nil {
-		fmt.Printf("%+v\n", err)
+		log.Error().Err(err).Msgf("%+v\n", err)
 	}
 
 	var curMetric metrics.Metric
@@ -182,7 +195,7 @@ func main() {
 		case <-pollTick.C:
 			curMetric = getMetrics(curMetric)
 		case <-reportTick.C:
-			curMetric = report(curMetric)
+			curMetric = report(curMetric, cfg.Key)
 		case <-osSigChan:
 			os.Exit(0)
 		}

@@ -17,16 +17,16 @@ func NewInMemory() Repository {
 	}
 }
 
-func (s *InMemory) Get(key string) (serializers.Metrics, error) {
+func (s *InMemory) Get(key string) (*serializers.Metrics, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if v, ok := s.m[key]; ok {
-		return v, nil
+		return &v, nil
 	}
-	return serializers.Metrics{}, ErrNotFound
+	return nil, ErrNotFound
 }
 
-func (s *InMemory) Put(metric serializers.Metrics) error {
+func (s *InMemory) Put(metric *serializers.Metrics) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if curMetric, ok := s.m[metric.ID]; ok {
@@ -37,20 +37,21 @@ func (s *InMemory) Put(metric serializers.Metrics) error {
 		}
 	}
 
-	s.m[metric.ID] = metric
+	s.m[metric.ID] = *metric
 	return nil
 }
 
 // All values in map
-func (s *InMemory) All() map[string]serializers.Metrics {
+func (s *InMemory) All() (map[string]serializers.Metrics, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.m
+	return s.m, nil
 }
 
 // Обновляет мапу с метриками в памяти снэпшотом данных из файла
-func (s *InMemory) UpdateAll(m map[string]serializers.Metrics) {
+func (s *InMemory) UpdateAll(m map[string]serializers.Metrics) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.m = m
+	return nil
 }

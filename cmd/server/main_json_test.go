@@ -36,7 +36,7 @@ func TestUnknownHandlersJSON(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository)
+	srv := server.New(repository, key, nil)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
@@ -88,7 +88,7 @@ func TestGaugeHandlersJSON(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository)
+	srv := server.New(repository, key, nil)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
@@ -140,7 +140,7 @@ func TestCounterHandlersJSON(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository)
+	srv := server.New(repository, key, nil)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
@@ -197,7 +197,7 @@ func TestCounterJSON(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository)
+	srv := server.New(repository, key, nil)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
@@ -311,7 +311,7 @@ func TestGaugeJSON(t *testing.T) {
 
 	// Create a New Server Struct
 	repository := storage.NewInMemory()
-	srv := server.New(repository)
+	srv := server.New(repository, key, nil)
 	srv.MountHandlers()
 
 	for _, tt := range tests {
