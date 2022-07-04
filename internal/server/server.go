@@ -55,10 +55,10 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	metricName := chi.URLParam(r, "metricName")
 	metricValue := chi.URLParam(r, "metricValue")
 
-	if metricValue == "none" {
-		http.Error(w, "Неверное значение метрики", http.StatusBadRequest)
-		return
-	}
+	// if metricValue == "none" {
+	// 	http.Error(w, "Неверное значение метрики", http.StatusBadRequest)
+	// 	return
+	// }
 
 	if metricType != "gauge" && metricType != "counter" {
 		http.Error(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
@@ -106,7 +106,7 @@ func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if len(metrics) == 0 {
-		http.Error(w, "Metric name can't be empty", http.StatusNotFound)
+		http.Error(w, "Metric name can't be empty", http.StatusBadRequest)
 		return
 	}
 
@@ -122,19 +122,7 @@ func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) 
 		}
 
 		// Если хэш не пустой, то сверяем хэши
-		if s.Key != "" && metric.Hash != "" && metric.Hash != "none" {
-			var serverGeneratedHash string
-			if metric.MType == "gauge" {
-				serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%f", *metric.Value), s.Key)
-			} else if metric.MType == "counter" {
-				serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%d", *metric.Delta), s.Key)
-			}
-
-			if metric.Hash != serverGeneratedHash {
-				http.Error(w, "Hash is not valid", http.StatusBadRequest)
-				return
-			}
-		}
+		checkHash(s.Key, metric, w)
 
 		// write metric to repository
 		err = s.storage.Put(&metric)
@@ -178,19 +166,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Если хэш не пустой, то сверяем хэши
-	if s.Key != "" && metrics.Hash != "" && metrics.Hash != "none" {
-		var serverGeneratedHash string
-		if metrics.MType == "gauge" {
-			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%f", *metrics.Value), s.Key)
-		} else if metrics.MType == "counter" {
-			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%d", *metrics.Delta), s.Key)
-		}
-
-		if metrics.Hash != serverGeneratedHash {
-			http.Error(w, "Hash is not valid", http.StatusBadRequest)
-			return
-		}
-	}
+	checkHash(s.Key, metrics, w)
 
 	// write metric to repository
 	err = s.storage.Put(&metrics)
@@ -243,16 +219,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Если хэш не пустой, то сверяем хэши
-	if s.Key != "" {
-		var serverGeneratedHash string
-		if metrics.MType == "gauge" {
-			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%f", *metrics.Value), s.Key)
-		} else if metrics.MType == "counter" {
-			serverGeneratedHash = serializers.Hash(metrics.MType, metrics.ID, fmt.Sprintf("%d", *metrics.Delta), s.Key)
-		}
-
-		metrics.Hash = serverGeneratedHash
-	}
+	metrics.Hash = checkHash(s.Key, *metrics, w)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)
@@ -298,4 +265,25 @@ func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Ping OK"))
+}
+
+// Сверяем хэши, а если пустой, то генерим новый
+func checkHash(key string, metric serializers.Metrics, w http.ResponseWriter) (hash string) {
+	if key != "" {
+		var serverGeneratedHash string
+		if metric.MType == "gauge" {
+			serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%f", *metric.Value), key)
+		} else if metric.MType == "counter" {
+			serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%d", *metric.Delta), key)
+		}
+
+		if metric.Hash != "" && metric.Hash != "none" && metric.Hash != serverGeneratedHash {
+			http.Error(w, "Hash is not valid", http.StatusBadRequest)
+			return
+		}
+
+		return serverGeneratedHash
+	}
+
+	return ""
 }

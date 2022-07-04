@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -15,6 +16,7 @@ import (
 )
 
 type InDatabase struct {
+	mu     sync.Mutex
 	dbpool *pgxpool.Pool
 	key    string
 }
@@ -87,9 +89,10 @@ func (storage *InDatabase) Get(key string) (*serializers.Metrics, error) {
 }
 
 func (storage *InDatabase) Put(metric *serializers.Metrics) error {
-
 	// если это counter, то извлекаем из базы последнее значение счетчика и увеличиваем его на значение метрики
 	if metric.MType == "counter" {
+		storage.mu.Lock()
+		defer storage.mu.Unlock()
 		metricFromDB, err := storage.Get(metric.ID)
 		if err != nil && err != pgx.ErrNoRows {
 			return err
