@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -141,35 +142,39 @@ func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) 
 
 // Ручка обновляющая значение метрики
 func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
-	var metrics serializers.Metrics
+	var metric *serializers.Metrics = new(serializers.Metrics)
 
 	// decode input or return error
-	err := json.NewDecoder(r.Body).Decode(&metrics)
+	err := json.NewDecoder(r.Body).Decode(metric)
 	if err != nil {
 		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
 		return
 	}
 
-	if metrics.ID == "" {
+	if metric == nil {
+		log.Println("YO!!!")
+	}
+
+	if metric.ID == "" {
 		http.Error(w, "Metric name can't be empty", http.StatusNotFound)
 		return
 	}
 
-	if metrics.Value == nil && metrics.Delta == nil {
+	if metric.Value == nil && metric.Delta == nil {
 		http.Error(w, "Value can't be nil", http.StatusBadRequest)
 		return
 	}
 
-	if metrics.MType != "gauge" && metrics.MType != "counter" {
+	if metric.MType != "gauge" && metric.MType != "counter" {
 		http.Error(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
 		return
 	}
 
 	// Если хэш не пустой, то сверяем хэши
-	checkHash(s.Key, &metrics, w)
+	checkHash(s.Key, metric, w)
 
 	// write metric to repository
-	err = s.storage.Put(&metrics)
+	err = s.storage.Put(metric)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
 		return
@@ -272,7 +277,6 @@ func checkHash(key string, metric *serializers.Metrics, w http.ResponseWriter) (
 	if key != "" {
 		var serverGeneratedHash string
 		if metric.MType == "gauge" {
-			fmt.Println("YO!!!", *metric.Value)
 			serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%f", *metric.Value), key)
 		} else if metric.MType == "counter" {
 			serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%d", *metric.Delta), key)
