@@ -144,7 +144,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metric *serializers.Metrics
 
 	// decode input or return error
-	err := json.NewDecoder(r.Body).Decode(metric)
+	err := json.NewDecoder(r.Body).Decode(&metric)
 	if err != nil {
 		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
 		return
