@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -165,6 +166,8 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println(*metric)
+
 	// Если хэш не пустой, то сверяем хэши
 	checkHash(s.Key, metric, w)
 
@@ -272,16 +275,8 @@ func checkHash(key string, metric *serializers.Metrics, w http.ResponseWriter) (
 	if key != "" {
 		var serverGeneratedHash string
 		if metric.MType == "gauge" {
-			if metric.Value == nil {
-				http.Error(w, "Value can't be nil", http.StatusBadRequest)
-				return
-			}
 			serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%f", *metric.Value), key)
 		} else if metric.MType == "counter" {
-			if metric.Delta == nil {
-				http.Error(w, "Value can't be nil", http.StatusBadRequest)
-				return
-			}
 			serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%d", *metric.Delta), key)
 		}
 
