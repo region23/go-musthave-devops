@@ -122,7 +122,7 @@ func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) 
 		}
 
 		// Если хэш не пустой, то сверяем хэши
-		checkHash(s.Key, metric, w)
+		checkHash(s.Key, &metric, w)
 
 		// write metric to repository
 		err = s.storage.Put(&metric)
@@ -166,7 +166,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Если хэш не пустой, то сверяем хэши
-	checkHash(s.Key, metrics, w)
+	checkHash(s.Key, &metrics, w)
 
 	// write metric to repository
 	err = s.storage.Put(&metrics)
@@ -219,7 +219,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Если хэш не пустой, то сверяем хэши
-	metrics.Hash = checkHash(s.Key, *metrics, w)
+	metrics.Hash = checkHash(s.Key, metrics, w)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)
@@ -268,7 +268,7 @@ func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
 }
 
 // Сверяем хэши, а если пустой, то генерим новый
-func checkHash(key string, metric serializers.Metrics, w http.ResponseWriter) (hash string) {
+func checkHash(key string, metric *serializers.Metrics, w http.ResponseWriter) (hash string) {
 	if key != "" {
 		var serverGeneratedHash string
 		if metric.MType == "gauge" {
