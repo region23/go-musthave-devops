@@ -272,6 +272,7 @@ func checkHash(key string, metric *serializers.Metrics, w http.ResponseWriter) (
 	if key != "" {
 		var serverGeneratedHash string
 		if metric.MType == "gauge" {
+			fmt.Println("YO!!!", *metric.Value)
 			serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%f", *metric.Value), key)
 		} else if metric.MType == "counter" {
 			serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%d", *metric.Delta), key)
