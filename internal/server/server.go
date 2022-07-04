@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -149,10 +148,6 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
 		return
-	}
-
-	if metric == nil {
-		log.Println("YO!!!")
 	}
 
 	if metric.ID == "" {
