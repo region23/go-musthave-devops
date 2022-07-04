@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -142,7 +141,7 @@ func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) 
 
 // Ручка обновляющая значение метрики
 func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
-	var metric = new(serializers.Metrics)
+	var metric *serializers.Metrics
 
 	// decode input or return error
 	err := json.NewDecoder(r.Body).Decode(metric)
@@ -165,8 +164,6 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
 		return
 	}
-
-	log.Println(*metric)
 
 	// Если хэш не пустой, то сверяем хэши
 	checkHash(s.Key, metric, w)
@@ -274,15 +271,11 @@ func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
 func checkHash(key string, metric *serializers.Metrics, w http.ResponseWriter) (hash string) {
 	if key != "" {
 		var serverGeneratedHash string
-		if metric.MType == "gauge" {
-			if metric.Value != nil {
-				log.Println("gaugeValue", *metric.Value)
-			}
-			if metric.Delta != nil {
-				log.Println("gaugeDelta", *metric.Delta)
-			}
+
+		if metric.Value != nil {
 			serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%f", *metric.Value), key)
-		} else if metric.MType == "counter" {
+		}
+		if metric.Delta != nil {
 			serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%d", *metric.Delta), key)
 		}
 
