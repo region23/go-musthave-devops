@@ -141,7 +141,7 @@ func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) 
 
 // Ручка обновляющая значение метрики
 func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
-	var metric *serializers.Metrics = new(serializers.Metrics)
+	var metric = new(serializers.Metrics)
 
 	// decode input or return error
 	err := json.NewDecoder(r.Body).Decode(metric)
