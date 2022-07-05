@@ -191,9 +191,9 @@ func main() {
 	for {
 		select {
 		case <-pollTick.C:
-			go getMetrics(curMetric)
+			getMetrics(curMetric)
 		case <-reportTick.C:
-			go report(curMetric, cfg.Key)
+			report(curMetric, cfg.Key)
 		case <-osSigChan:
 			os.Exit(0)
 		}
