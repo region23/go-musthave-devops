@@ -21,6 +21,9 @@ import (
 	"github.com/region23/go-musthave-devops/internal/metrics"
 	"github.com/region23/go-musthave-devops/internal/serializers"
 	"github.com/rs/zerolog/log"
+
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 type Config struct {
@@ -75,6 +78,24 @@ func getMetrics(curMetric *metrics.Metric) {
 	r1 := rand.New(s1)
 	curMetric.RandomValue = metrics.Gauge(r1.Float64())
 	curMetric.PollCount += 1
+}
+
+func getGopsUitilMetrics(curMetric *metrics.Metric) {
+	cpu_count, err := cpu.Counts(false)
+	if err != nil {
+		log.Error().Err(err).Msg("При получении количества процессоров возникла ошибка")
+	}
+
+	curMetric.CPUutilization1 = metrics.Gauge(cpu_count)
+
+	v, err := mem.VirtualMemory()
+
+	if err != nil {
+		log.Error().Err(err).Msg("При получении данных о виртуальной памяти возникла ошибка")
+	}
+
+	curMetric.TotalMemory = metrics.Gauge(v.Total)
+	curMetric.FreeMemory = metrics.Gauge(v.Free)
 }
 
 // Отправляем метрику на сервер
@@ -192,6 +213,7 @@ func main() {
 		select {
 		case <-pollTick.C:
 			go getMetrics(curMetric)
+			go getGopsUitilMetrics(curMetric)
 		case <-reportTick.C:
 			go report(curMetric, cfg.Key)
 		case <-osSigChan:
