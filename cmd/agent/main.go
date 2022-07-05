@@ -124,7 +124,7 @@ func report(curMetric *metrics.Metric, key string) {
 	metricsBatch := []serializers.Metrics{}
 
 	var mType, mName, mValue string
-	v := reflect.ValueOf(curMetric)
+	v := reflect.ValueOf(*curMetric)
 	typeOfS := v.Type()
 	for i := 0; i < v.NumField(); i++ {
 		switch v.Field(i).Interface().(type) {
