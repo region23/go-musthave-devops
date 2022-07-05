@@ -181,7 +181,7 @@ func main() {
 
 	curMetric := new(metrics.Metric)
 
-	getMetrics(curMetric)
+	//getMetrics(curMetric)
 
 	osSigChan := make(chan os.Signal, 1)
 	signal.Notify(osSigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
@@ -191,9 +191,9 @@ func main() {
 	for {
 		select {
 		case <-pollTick.C:
-			getMetrics(curMetric)
+			go getMetrics(curMetric)
 		case <-reportTick.C:
-			report(curMetric, cfg.Key)
+			go report(curMetric, cfg.Key)
 		case <-osSigChan:
 			os.Exit(0)
 		}
