@@ -181,7 +181,7 @@ func main() {
 
 	curMetric := new(metrics.Metric)
 
-	go getMetrics(curMetric)
+	getMetrics(curMetric)
 
 	osSigChan := make(chan os.Signal, 1)
 	signal.Notify(osSigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
