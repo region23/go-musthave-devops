@@ -39,7 +39,7 @@ func init() {
 	flag.StringVar(&cfg.Key, "k", "", "key for hashing")
 }
 
-func getMetrics(curMetric metrics.Metric) metrics.Metric {
+func getMetrics(curMetric *metrics.Metric) {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
@@ -75,8 +75,6 @@ func getMetrics(curMetric metrics.Metric) metrics.Metric {
 	r1 := rand.New(s1)
 	curMetric.RandomValue = metrics.Gauge(r1.Float64())
 	curMetric.PollCount += 1
-
-	return curMetric
 }
 
 // Отправляем метрику на сервер
@@ -122,7 +120,7 @@ func sendMetric(metricsToSend []serializers.Metrics) error {
 }
 
 // Отправка метрик на сервер
-func report(curMetric metrics.Metric, key string) metrics.Metric {
+func report(curMetric *metrics.Metric, key string) {
 	metricsBatch := []serializers.Metrics{}
 
 	var mType, mName, mValue string
@@ -172,7 +170,6 @@ func report(curMetric metrics.Metric, key string) metrics.Metric {
 	}
 
 	curMetric.PollCount = 1
-	return curMetric
 }
 
 func main() {
@@ -182,9 +179,9 @@ func main() {
 		log.Error().Err(err).Msgf("%+v\n", err)
 	}
 
-	var curMetric metrics.Metric
+	curMetric := new(metrics.Metric)
 
-	curMetric = getMetrics(curMetric)
+	//curMetric = getMetrics(curMetric)
 
 	osSigChan := make(chan os.Signal, 1)
 	signal.Notify(osSigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
@@ -194,9 +191,9 @@ func main() {
 	for {
 		select {
 		case <-pollTick.C:
-			curMetric = getMetrics(curMetric)
+			go getMetrics(curMetric)
 		case <-reportTick.C:
-			curMetric = report(curMetric, cfg.Key)
+			go report(curMetric, cfg.Key)
 		case <-osSigChan:
 			os.Exit(0)
 		}
