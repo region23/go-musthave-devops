@@ -87,7 +87,7 @@ func NewMetric(id string, mtype string, val ...interface{}) (Metric, error) {
 			}
 		}
 	default:
-		log.Error().Msg("не поддерживаемый тип метрики")
+		log.Error().Msg(fmt.Sprintf("не поддерживаемый тип метрики %v", v))
 		return metric, errors.New("не поддерживаемый тип метрики")
 	}
 
@@ -97,7 +97,7 @@ func NewMetric(id string, mtype string, val ...interface{}) (Metric, error) {
 }
 
 // Добавление метрики в коллекцию
-func (m *Metrics) Add(id string, mtype string, val ...interface{}) error {
+func (m *Metrics) Add(id string, mtype string, val interface{}) error {
 
 	metric, err := NewMetric(id, mtype, val)
 	if err != nil {
@@ -105,7 +105,7 @@ func (m *Metrics) Add(id string, mtype string, val ...interface{}) error {
 	}
 
 	if m.key != "" {
-		metric.Hash = Hash(m.key, id, mtype, fmt.Sprintf("%v", val[0]))
+		metric.Hash = Hash(m.key, id, mtype, fmt.Sprintf("%v", val))
 	}
 
 	m.collection[id] = metric
