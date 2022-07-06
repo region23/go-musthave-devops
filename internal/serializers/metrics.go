@@ -55,6 +55,8 @@ func NewMetric(id string, mtype string, val ...interface{}) (Metric, error) {
 		return metric, errors.New("value for metric is absent")
 	}
 
+	log.Debug().Msg(fmt.Sprintf("Чо там: %v | %s | %s", val[0], id, mtype))
+
 	switch v := val[0].(type) {
 	case int64:
 		metric.Delta = &v
