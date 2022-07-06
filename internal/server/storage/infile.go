@@ -27,7 +27,7 @@ func NewProducer(fileName string) (*Producer, error) {
 	}, nil
 }
 
-func (p *Producer) WriteMetrics(metrics map[string]serializers.Metrics) error {
+func (p *Producer) WriteMetrics(metrics map[string]serializers.Metric) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if metrics != nil {
@@ -56,10 +56,10 @@ func NewConsumer(fileName string) (*consumer, error) {
 		decoder: json.NewDecoder(file),
 	}, nil
 }
-func (c *consumer) ReadMetrics() (map[string]serializers.Metrics, error) {
+func (c *consumer) ReadMetrics() (map[string]serializers.Metric, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	metrics := map[string]serializers.Metrics{}
+	metrics := map[string]serializers.Metric{}
 	if err := c.decoder.Decode(&metrics); err != nil {
 		if !errors.Is(err, io.EOF) {
 			return nil, err

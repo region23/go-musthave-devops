@@ -14,22 +14,24 @@ import (
 )
 
 func TestUnknownHandlersJSON(t *testing.T) {
+	m1, _ := serializers.NewMetric("testCounter", "unknown", 100)
+	m2, _ := serializers.NewMetric("testCounter", "counter", 100)
 	tests := []struct {
 		name           string
 		endpointURL    string
-		metric         serializers.Metrics
+		metric         serializers.Metric
 		wantStatusCode int
 	}{
 		{
 			name:           "update_invalid_type",
 			endpointURL:    "/update",
-			metric:         serializers.NewMetrics("testCounter", "unknown", 100),
+			metric:         m1,
 			wantStatusCode: http.StatusNotImplemented,
 		},
 		{
 			name:           "update_invalid_method",
 			endpointURL:    "/updater",
-			metric:         serializers.NewMetrics("testCounter", "counter", 100),
+			metric:         m2,
 			wantStatusCode: http.StatusNotFound,
 		},
 	}
@@ -60,28 +62,31 @@ func TestUnknownHandlersJSON(t *testing.T) {
 }
 
 func TestGaugeHandlersJSON(t *testing.T) {
+	m1, _ := serializers.NewMetric("testGauge", "gauge", "none")
+	m2, _ := serializers.NewMetric("", "gauge")
+	m3, _ := serializers.NewMetric("testGauge", "gauge", 100)
 	tests := []struct {
 		name           string
 		endpointURL    string
-		metric         serializers.Metrics
+		metric         serializers.Metric
 		wantStatusCode int
 	}{
 		{
 			name:           "invalid_value",
 			endpointURL:    "/update",
-			metric:         serializers.NewMetrics("testGauge", "gauge", "none"),
+			metric:         m1,
 			wantStatusCode: http.StatusBadRequest,
 		},
 		{
 			name:           "without_id",
 			endpointURL:    "/update",
-			metric:         serializers.NewMetrics("", "gauge"),
+			metric:         m2,
 			wantStatusCode: http.StatusNotFound,
 		},
 		{
 			name:           "update",
 			endpointURL:    "/update",
-			metric:         serializers.NewMetrics("testGauge", "gauge", 100),
+			metric:         m3,
 			wantStatusCode: http.StatusOK,
 		},
 	}
@@ -112,28 +117,32 @@ func TestGaugeHandlersJSON(t *testing.T) {
 }
 
 func TestCounterHandlersJSON(t *testing.T) {
+	m1, _ := serializers.NewMetric("testCounter", "counter", "none")
+	m2, _ := serializers.NewMetric("", "counter")
+	m3, _ := serializers.NewMetric("testCounter", "counter", 100)
+
 	tests := []struct {
 		name           string
 		endpointURL    string
-		metric         serializers.Metrics
+		metric         serializers.Metric
 		wantStatusCode int
 	}{
 		{
 			name:           "invalid_value",
 			endpointURL:    "/update",
-			metric:         serializers.NewMetrics("testCounter", "counter", "none"),
+			metric:         m1,
 			wantStatusCode: http.StatusBadRequest,
 		},
 		{
 			name:           "without_id",
 			endpointURL:    "/update",
-			metric:         serializers.NewMetrics("", "counter"),
+			metric:         m2,
 			wantStatusCode: http.StatusNotFound,
 		},
 		{
 			name:           "update",
 			endpointURL:    "/update",
-			metric:         serializers.NewMetrics("testCounter", "counter", 100),
+			metric:         m3,
 			wantStatusCode: http.StatusOK,
 		},
 	}
@@ -204,7 +213,11 @@ func TestCounterJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.onlyValue == false {
 				// получаем текущее значение метрики
-				beforeMetric := serializers.NewMetrics(tt.metricName, "counter")
+				beforeMetric, err := serializers.NewMetric(tt.metricName, "counter")
+				if err != nil {
+					t.Fatal(err)
+				}
+
 				postBody, err := json.Marshal(beforeMetric)
 
 				if err != nil {
@@ -215,7 +228,7 @@ func TestCounterJSON(t *testing.T) {
 				request0 := httptest.NewRequest(http.MethodPost, "/value", responseBody)
 				request0.Header.Set("Content-Type", "application/json")
 				response0 := executeRequest(request0, srv)
-				var returnedMetric serializers.Metrics
+				var returnedMetric serializers.Metric
 				if response0.Code == http.StatusOK {
 					// decode input or return error
 					err = json.NewDecoder(response0.Body).Decode(&returnedMetric)
@@ -224,7 +237,11 @@ func TestCounterJSON(t *testing.T) {
 					}
 				}
 
-				newMetric := serializers.NewMetrics(tt.metricName, "counter", tt.value)
+				newMetric, err := serializers.NewMetric(tt.metricName, "counter", tt.value)
+				if err != nil {
+					t.Fatal(err)
+				}
+
 				var wantValue int64
 				if returnedMetric.Delta != nil {
 					wantValue = *returnedMetric.Delta + *newMetric.Delta
@@ -247,7 +264,7 @@ func TestCounterJSON(t *testing.T) {
 					request2 := httptest.NewRequest(http.MethodPost, "/value", responseBody)
 					request2.Header.Set("Content-Type", "application/json")
 					response2 := executeRequest(request2, srv)
-					var afterMetric serializers.Metrics
+					var afterMetric serializers.Metric
 					err = json.NewDecoder(response2.Body).Decode(&afterMetric)
 					if err != nil {
 						t.Fatal(err)
@@ -258,7 +275,11 @@ func TestCounterJSON(t *testing.T) {
 				}
 
 			} else {
-				metric := serializers.NewMetrics(tt.metricName, "counter")
+				metric, err := serializers.NewMetric(tt.metricName, "counter")
+				if err != nil {
+					t.Fatal(err)
+				}
+
 				postBody, err := json.Marshal(metric)
 
 				if err != nil {
@@ -317,7 +338,11 @@ func TestGaugeJSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if !tt.onlyValue {
-				metric := serializers.NewMetrics(tt.metricName, "gauge", tt.value)
+				metric, err := serializers.NewMetric(tt.metricName, "gauge", tt.value)
+				if err != nil {
+					t.Fatal(err)
+				}
+
 				postBody, err := json.Marshal(metric)
 
 				if err != nil {
@@ -335,14 +360,18 @@ func TestGaugeJSON(t *testing.T) {
 				request1 := httptest.NewRequest(http.MethodPost, "/value", responseBody)
 				request1.Header.Set("Content-Type", "application/json")
 				response1 := executeRequest(request1, srv)
-				var newMetric serializers.Metrics
+				var newMetric serializers.Metric
 				err = json.NewDecoder(response1.Body).Decode(&newMetric)
 				if err != nil {
 					t.Fatal(err)
 				}
 				require.Equal(t, tt.value, *newMetric.Value)
 			} else {
-				metric := serializers.NewMetrics(tt.metricName, "gauge")
+				metric, err := serializers.NewMetric(tt.metricName, "gauge")
+				if err != nil {
+					t.Fatal(err)
+				}
+
 				postBody, err := json.Marshal(metric)
 
 				if err != nil {

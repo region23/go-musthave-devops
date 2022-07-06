@@ -79,10 +79,14 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	metric := serializers.NewMetrics(metricName, metricType, metricValue)
+	metric, err := serializers.NewMetric(metricName, metricType, metricValue)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Ошибка при чтении метрики: %v", err.Error()), http.StatusBadRequest)
+		return
+	}
 
 	// write metric to repository
-	err := s.storage.Put(&metric)
+	err = s.storage.Put(&metric)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
 		return
@@ -96,7 +100,7 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 // Ручка обновляющая пачку метрик
 func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) {
-	var metrics []serializers.Metrics
+	var metrics []serializers.Metric
 
 	// decode input or return error
 	err := json.NewDecoder(r.Body).Decode(&metrics)
@@ -141,7 +145,7 @@ func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) 
 
 // Ручка обновляющая значение метрики
 func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
-	var metric *serializers.Metrics
+	var metric *serializers.Metric
 
 	// decode input or return error
 	err := json.NewDecoder(r.Body).Decode(&metric)
@@ -203,23 +207,23 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 // Ручка возвращающая значение метрики
 func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
-	metrics := &serializers.Metrics{}
+	metric := &serializers.Metric{}
 	// decode input or return error
-	err := json.NewDecoder(r.Body).Decode(metrics)
+	err := json.NewDecoder(r.Body).Decode(metric)
 	if err != nil {
 		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
 		return
 	}
 
-	metrics, err = s.storage.Get(metrics.ID)
+	metric, err = s.storage.Get(metric.ID)
 
-	if metrics == nil {
+	if metric == nil {
 		http.Error(w, "Metric not found", http.StatusNotFound)
 		return
 	}
 
 	// Если хэш не пустой, то сверяем хэши
-	metrics.Hash = checkHash(s.Key, metrics, w)
+	metric.Hash = checkHash(s.Key, metric, w)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)
@@ -228,7 +232,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(metrics)
+	err = json.NewEncoder(w).Encode(metric)
 	if err != nil {
 		http.Error(w, "Encode error! please check your JSON formating.", http.StatusBadRequest)
 		return
@@ -268,15 +272,15 @@ func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
 }
 
 // Сверяем хэши, а если пустой, то генерим новый
-func checkHash(key string, metric *serializers.Metrics, w http.ResponseWriter) (hash string) {
+func checkHash(key string, metric *serializers.Metric, w http.ResponseWriter) (hash string) {
 	if key != "" {
 		var serverGeneratedHash string
 
 		if metric.Value != nil {
-			serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%f", *metric.Value), key)
+			serverGeneratedHash = serializers.Hash(key, metric.ID, metric.MType, fmt.Sprintf("%f", *metric.Value))
 		}
 		if metric.Delta != nil {
-			serverGeneratedHash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%d", *metric.Delta), key)
+			serverGeneratedHash = serializers.Hash(key, metric.ID, metric.MType, fmt.Sprintf("%d", *metric.Delta))
 		}
 
 		if metric.Hash != "" && metric.Hash != "none" && metric.Hash != serverGeneratedHash {

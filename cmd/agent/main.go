@@ -11,14 +11,11 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"reflect"
 	"runtime"
-	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/caarlos0/env/v6"
-	"github.com/region23/go-musthave-devops/internal/metrics"
 	"github.com/region23/go-musthave-devops/internal/serializers"
 	"github.com/rs/zerolog/log"
 
@@ -42,51 +39,59 @@ func init() {
 	flag.StringVar(&cfg.Key, "k", "", "key for hashing")
 }
 
-func getMetrics(curMetric *metrics.Metric) {
+func getMainMetrics(metrics *serializers.Metrics) {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
-	curMetric.Alloc = metrics.Gauge(memStats.Alloc)
-	curMetric.BuckHashSys = metrics.Gauge(memStats.BuckHashSys)
-	curMetric.Frees = metrics.Gauge(memStats.Frees)
-	curMetric.GCCPUFraction = metrics.Gauge(memStats.GCCPUFraction)
-	curMetric.GCSys = metrics.Gauge(memStats.GCSys)
-	curMetric.HeapAlloc = metrics.Gauge(memStats.HeapAlloc)
-	curMetric.HeapIdle = metrics.Gauge(memStats.HeapIdle)
-	curMetric.HeapInuse = metrics.Gauge(memStats.HeapInuse)
-	curMetric.HeapObjects = metrics.Gauge(memStats.HeapObjects)
-	curMetric.HeapReleased = metrics.Gauge(memStats.HeapReleased)
-	curMetric.HeapSys = metrics.Gauge(memStats.HeapSys)
-	curMetric.LastGC = metrics.Gauge(memStats.LastGC)
-	curMetric.Lookups = metrics.Gauge(memStats.Lookups)
-	curMetric.MCacheInuse = metrics.Gauge(memStats.MCacheInuse)
-	curMetric.MCacheSys = metrics.Gauge(memStats.MCacheSys)
-	curMetric.MSpanInuse = metrics.Gauge(memStats.MSpanInuse)
-	curMetric.MSpanSys = metrics.Gauge(memStats.MSpanSys)
-	curMetric.Mallocs = metrics.Gauge(memStats.Mallocs)
-	curMetric.NextGC = metrics.Gauge(memStats.NextGC)
-	curMetric.NumForcedGC = metrics.Gauge(memStats.NumForcedGC)
-	curMetric.NumGC = metrics.Gauge(memStats.NumGC)
-	curMetric.OtherSys = metrics.Gauge(memStats.OtherSys)
-	curMetric.PauseTotalNs = metrics.Gauge(memStats.PauseTotalNs)
-	curMetric.StackInuse = metrics.Gauge(memStats.StackInuse)
-	curMetric.StackSys = metrics.Gauge(memStats.StackSys)
-	curMetric.Sys = metrics.Gauge(memStats.Sys)
-	curMetric.TotalAlloc = metrics.Gauge(memStats.TotalAlloc)
+	metrics.Add("Alloc", "gauge", memStats.Alloc)
+	metrics.Add("BuckHashSys", "gauge", memStats.BuckHashSys)
+	metrics.Add("Frees", "gauge", memStats.Frees)
+	metrics.Add("GCCPUFraction", "gauge", memStats.GCCPUFraction)
+	metrics.Add("GCSys", "gauge", memStats.GCSys)
+	metrics.Add("HeapAlloc", "gauge", memStats.HeapAlloc)
+	metrics.Add("HeapIdle", "gauge", memStats.HeapIdle)
+	metrics.Add("HeapInuse", "gauge", memStats.HeapInuse)
+	metrics.Add("HeapObjects", "gauge", memStats.HeapObjects)
+	metrics.Add("HeapReleased", "gauge", memStats.HeapReleased)
+	metrics.Add("HeapSys", "gauge", memStats.HeapSys)
+	metrics.Add("LastGC", "gauge", memStats.LastGC)
+	metrics.Add("Lookups", "gauge", memStats.Lookups)
+	metrics.Add("MCacheInuse", "gauge", memStats.MCacheInuse)
+	metrics.Add("MCacheSys", "gauge", memStats.MCacheSys)
+	metrics.Add("MSpanInuse", "gauge", memStats.MSpanInuse)
+	metrics.Add("MSpanSys", "gauge", memStats.MSpanSys)
+	metrics.Add("Mallocs", "gauge", memStats.Mallocs)
+	metrics.Add("NextGC", "gauge", memStats.NextGC)
+	metrics.Add("NumForcedGC", "gauge", memStats.NumForcedGC)
+	metrics.Add("NumGC", "gauge", memStats.NumGC)
+	metrics.Add("OtherSys", "gauge", memStats.OtherSys)
+	metrics.Add("PauseTotalNs", "gauge", memStats.PauseTotalNs)
+	metrics.Add("StackInuse", "gauge", memStats.StackInuse)
+	metrics.Add("StackSys", "gauge", memStats.StackSys)
+	metrics.Add("Sys", "gauge", memStats.Sys)
+	metrics.Add("TotalAlloc", "gauge", memStats.TotalAlloc)
 
 	s1 := rand.NewSource(time.Now().UnixNano())
 	r1 := rand.New(s1)
-	curMetric.RandomValue = metrics.Gauge(r1.Float64())
-	curMetric.PollCount += 1
+	metrics.Add("RandomValue", "gauge", r1.Float64())
+
+	pollCount, exist := metrics.Get("PollCount")
+	var val float64 = 1
+	if exist {
+		val = *pollCount.Value + 1
+	}
+	metrics.Add("PollCount", "gauge", val)
 }
 
-func getGopsUitilMetrics(curMetric *metrics.Metric) {
-	cpu_count, err := cpu.Counts(false)
+func getGopsUitilMetrics(metrics *serializers.Metrics) {
+	cpuUtilization, err := cpu.Percent(0, true)
 	if err != nil {
-		log.Error().Err(err).Msg("При получении количества процессоров возникла ошибка")
+		log.Error().Err(err).Msg("При получении процента загрузки процессоров возникла ошибка")
 	}
 
-	curMetric.CPUutilization1 = metrics.Gauge(cpu_count)
+	for i := 0; i < len(cpuUtilization); i++ {
+		metrics.Add(fmt.Sprintf("%s%d", "CPUutilization", i+1), "gauge", cpuUtilization[i])
+	}
 
 	v, err := mem.VirtualMemory()
 
@@ -94,19 +99,19 @@ func getGopsUitilMetrics(curMetric *metrics.Metric) {
 		log.Error().Err(err).Msg("При получении данных о виртуальной памяти возникла ошибка")
 	}
 
-	curMetric.TotalMemory = metrics.Gauge(v.Total)
-	curMetric.FreeMemory = metrics.Gauge(v.Free)
+	metrics.Add("TotalMemory", "gauge", v.Total)
+	metrics.Add("FreeMemory", "gauge", v.Free)
 }
 
 // Отправляем метрику на сервер
-func sendMetric(metricsToSend []serializers.Metrics) error {
+func sendMetric(metrics *serializers.Metrics) error {
 	u := url.URL{
 		Scheme: "http",
 		Host:   cfg.Address,
 		Path:   "updates",
 	}
 
-	postBody, err := json.Marshal(metricsToSend)
+	postBody, err := json.Marshal(metrics.GetAll())
 
 	if err != nil {
 		return err
@@ -137,60 +142,10 @@ func sendMetric(metricsToSend []serializers.Metrics) error {
 	// и печатаем его
 	log.Debug().Msg(string(body))
 
+	// После отправки сбрасываем счётчик
+	metrics.Add("PollCount", "gauge", 1)
+
 	return nil
-}
-
-// Отправка метрик на сервер
-func report(curMetric *metrics.Metric, key string) {
-	metricsBatch := []serializers.Metrics{}
-
-	var mType, mName, mValue string
-	v := reflect.ValueOf(*curMetric)
-	typeOfS := v.Type()
-	for i := 0; i < v.NumField(); i++ {
-		switch v.Field(i).Interface().(type) {
-		case metrics.Gauge:
-			mType = "gauge"
-		case metrics.Counter:
-			mType = "counter"
-		}
-
-		mValue = fmt.Sprintf("%v", v.Field(i).Interface())
-		mName = fmt.Sprintf("%v", typeOfS.Field(i).Name)
-
-		metricToSend := serializers.NewMetrics(mName, mType)
-
-		if mType == "gauge" {
-			if s, err := strconv.ParseFloat(mValue, 64); err == nil {
-				metricToSend.Value = &s
-				if key != "" {
-					metricToSend.Hash = serializers.Hash(mType, mName, fmt.Sprintf("%f", s), key)
-				}
-
-			} else {
-				log.Panic().Err(err).Msg("Ошибка при парсинге числа метрики")
-			}
-
-		} else if mType == "counter" {
-			if s, err := strconv.ParseInt(mValue, 10, 64); err == nil {
-				metricToSend.Delta = &s
-				if key != "" {
-					metricToSend.Hash = serializers.Hash(mType, mName, fmt.Sprintf("%d", s), key)
-				}
-			} else {
-				log.Panic().Err(err).Msg("Ошибка при парсинге числа счетчика метрики")
-			}
-		}
-
-		metricsBatch = append(metricsBatch, metricToSend)
-
-		err := sendMetric(metricsBatch)
-		if err != nil {
-			log.Error().Err(err).Msg("Ошибка при отправке метрики на сервер")
-		}
-	}
-
-	curMetric.PollCount = 1
 }
 
 func main() {
@@ -200,9 +155,7 @@ func main() {
 		log.Error().Err(err).Msgf("%+v\n", err)
 	}
 
-	curMetric := new(metrics.Metric)
-
-	//getMetrics(curMetric)
+	metrics := serializers.InitMetrics(cfg.Key)
 
 	osSigChan := make(chan os.Signal, 1)
 	signal.Notify(osSigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
@@ -212,10 +165,10 @@ func main() {
 	for {
 		select {
 		case <-pollTick.C:
-			go getMetrics(curMetric)
-			go getGopsUitilMetrics(curMetric)
+			go getMainMetrics(metrics)
+			go getGopsUitilMetrics(metrics)
 		case <-reportTick.C:
-			go report(curMetric, cfg.Key)
+			go sendMetric(metrics)
 		case <-osSigChan:
 			os.Exit(0)
 		}

@@ -8,16 +8,16 @@ import (
 
 type InMemory struct {
 	mu sync.Mutex
-	m  map[string]serializers.Metrics
+	m  map[string]serializers.Metric
 }
 
 func NewInMemory() Repository {
 	return &InMemory{
-		m: make(map[string]serializers.Metrics),
+		m: make(map[string]serializers.Metric),
 	}
 }
 
-func (s *InMemory) Get(key string) (*serializers.Metrics, error) {
+func (s *InMemory) Get(key string) (*serializers.Metric, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if v, ok := s.m[key]; ok {
@@ -26,7 +26,7 @@ func (s *InMemory) Get(key string) (*serializers.Metrics, error) {
 	return nil, ErrNotFound
 }
 
-func (s *InMemory) Put(metric *serializers.Metrics) error {
+func (s *InMemory) Put(metric *serializers.Metric) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if curMetric, ok := s.m[metric.ID]; ok {
@@ -42,14 +42,14 @@ func (s *InMemory) Put(metric *serializers.Metrics) error {
 }
 
 // All values in map
-func (s *InMemory) All() (map[string]serializers.Metrics, error) {
+func (s *InMemory) All() (map[string]serializers.Metric, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.m, nil
 }
 
 // Обновляет мапу с метриками в памяти снэпшотом данных из файла
-func (s *InMemory) UpdateAll(m map[string]serializers.Metrics) error {
+func (s *InMemory) UpdateAll(m map[string]serializers.Metric) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.m = m
