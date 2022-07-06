@@ -217,6 +217,11 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 	metric, err = s.storage.Get(metric.ID)
 
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)
+		return
+	}
+
 	if metric == nil {
 		http.Error(w, "Metric not found", http.StatusNotFound)
 		return
@@ -224,11 +229,6 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 	// Если хэш не пустой, то сверяем хэши
 	metric.Hash = checkHash(s.Key, metric, w)
-
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)
-		return
-	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

@@ -55,8 +55,6 @@ func NewMetric(id string, mtype string, val ...interface{}) (Metric, error) {
 		return metric, errors.New("value for metric is absent")
 	}
 
-	log.Debug().Msg(fmt.Sprintf("Чо там: %v | %s | %s", val[0], id, mtype))
-
 	switch v := val[0].(type) {
 	case int64:
 		metric.Delta = &v
@@ -90,8 +88,6 @@ func NewMetric(id string, mtype string, val ...interface{}) (Metric, error) {
 		log.Error().Msg(fmt.Sprintf("не поддерживаемый тип метрики %v", v))
 		return metric, errors.New("не поддерживаемый тип метрики")
 	}
-
-	log.Debug().Msg(fmt.Sprintf("После упаковки: %v", metric))
 
 	return metric, nil
 }
