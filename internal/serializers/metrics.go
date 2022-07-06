@@ -91,6 +91,8 @@ func NewMetric(id string, mtype string, val ...interface{}) (Metric, error) {
 		return metric, errors.New("не поддерживаемый тип метрики")
 	}
 
+	log.Debug().Msg(fmt.Sprintf("После упаковки: %v", metric))
+
 	return metric, nil
 }
 
