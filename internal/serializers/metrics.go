@@ -85,8 +85,8 @@ func NewMetric(id string, mtype string, val ...interface{}) (Metric, error) {
 			}
 		}
 	default:
-		log.Error().Msg(fmt.Sprintf("не поддерживаемый тип метрики %v", v))
-		return metric, errors.New("не поддерживаемый тип метрики")
+		// log.Error().Msg(fmt.Sprintf("не поддерживаемый тип метрики %v", v))
+		// return metric, errors.New("не поддерживаемый тип метрики")
 	}
 
 	return metric, nil
