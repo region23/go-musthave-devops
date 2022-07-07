@@ -228,11 +228,11 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Если хэш не пустой, то сверяем хэши
-	metric.Hash = checkHash(s.Key, metric, w)
+	//metric.Hash = checkHash(s.Key, metric, w)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(metric)
+	err = json.NewEncoder(w).Encode(&metric)
 	if err != nil {
 		http.Error(w, "Encode error! please check your JSON formating.", http.StatusBadRequest)
 		return
