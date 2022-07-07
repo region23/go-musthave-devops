@@ -84,7 +84,7 @@ func getMainMetrics(metrics *serializers.Metrics) {
 }
 
 func getGopsUitilMetrics(metrics *serializers.Metrics) {
-	cpuUtilization, err := cpu.Percent(0, true)
+	cpuUtilization, err := cpu.Percent(time.Second*10, true)
 	if err != nil {
 		log.Error().Err(err).Msg("При получении процента загрузки процессоров возникла ошибка")
 	}
