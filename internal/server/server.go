@@ -14,6 +14,7 @@ import (
 	mw "github.com/region23/go-musthave-devops/internal/server/middleware"
 	"github.com/region23/go-musthave-devops/internal/server/storage"
 	"github.com/region23/go-musthave-devops/internal/server/storage/database"
+	"github.com/rs/zerolog/log"
 )
 
 type Server struct {
@@ -215,12 +216,16 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Debug().Msgf("Пришло: %v", metric)
+
 	metric, err = s.storage.Get(metric.ID)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)
 		return
 	}
+
+	log.Debug().Msgf("Извлекли: %v", metric)
 
 	if metric == nil {
 		http.Error(w, "Metric not found", http.StatusNotFound)
