@@ -14,7 +14,6 @@ import (
 	mw "github.com/region23/go-musthave-devops/internal/server/middleware"
 	"github.com/region23/go-musthave-devops/internal/server/storage"
 	"github.com/region23/go-musthave-devops/internal/server/storage/database"
-	"github.com/rs/zerolog/log"
 )
 
 type Server struct {
@@ -212,23 +211,19 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	// decode input or return error
 	err := json.NewDecoder(r.Body).Decode(&metric)
 	if err != nil {
-		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
+		JSONError(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
 		return
 	}
-
-	log.Debug().Msgf("Пришло: %v", metric)
 
 	metric, err = s.storage.Get(metric.ID)
 
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)
+		JSONError(w, fmt.Sprintf("Ошибка при получении метрики: %v", err.Error()), http.StatusNotFound)
 		return
 	}
 
-	log.Debug().Msgf("Извлекли: %v", metric)
-
 	if metric == nil {
-		http.Error(w, "Metric not found", http.StatusNotFound)
+		JSONError(w, "Metric not found", http.StatusNotFound)
 		return
 	}
 
@@ -239,7 +234,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(&metric)
 	if err != nil {
-		http.Error(w, "Encode error! please check your JSON formating.", http.StatusBadRequest)
+		JSONError(w, "Encode error! please check your JSON formating.", http.StatusBadRequest)
 		return
 	}
 }
@@ -297,4 +292,11 @@ func checkHash(key string, metric *serializers.Metric, w http.ResponseWriter) (h
 	}
 
 	return ""
+}
+
+func JSONError(w http.ResponseWriter, err interface{}, code int) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(err)
 }
