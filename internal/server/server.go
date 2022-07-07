@@ -228,7 +228,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Если хэш не пустой, то сверяем хэши
-	//metric.Hash = checkHash(s.Key, metric, w)
+	metric.Hash = checkHash(s.Key, metric, w)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
