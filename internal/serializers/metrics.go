@@ -114,7 +114,12 @@ func (m *Metrics) Add(id string, mtype string, val interface{}) error {
 	}
 
 	if m.key != "" {
-		metric.Hash = Hash(m.key, id, mtype, fmt.Sprintf("%v", val))
+		if metric.Value != nil {
+			metric.Hash = Hash(m.key, metric.ID, metric.MType, fmt.Sprintf("%f", *metric.Value))
+		}
+		if metric.Delta != nil {
+			metric.Hash = Hash(m.key, metric.ID, metric.MType, fmt.Sprintf("%d", *metric.Delta))
+		}
 	}
 
 	m.collection[id] = metric

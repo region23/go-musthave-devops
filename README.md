@@ -22,3 +22,6 @@ git fetch template && git checkout template/main .github
 ```
 
 Затем добавьте полученные изменения в свой репозиторий.
+
+
+`go run cmd/server/main.go -k "123" -d "postgres://postgres:postgres@localhost:5432/praktikum"`
