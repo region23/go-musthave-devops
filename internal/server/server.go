@@ -14,7 +14,6 @@ import (
 	mw "github.com/region23/go-musthave-devops/internal/server/middleware"
 	"github.com/region23/go-musthave-devops/internal/server/storage"
 	"github.com/region23/go-musthave-devops/internal/server/storage/database"
-	"github.com/rs/zerolog/log"
 )
 
 type Server struct {
@@ -155,7 +154,10 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Debug().Msg(fmt.Sprintf("%v", metric))
+	if metric.MType != "gauge" && metric.MType != "counter" {
+		http.Error(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
+		return
+	}
 
 	if metric.ID == "" {
 		http.Error(w, "Metric name can't be empty", http.StatusNotFound)
@@ -164,11 +166,6 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 	if metric.Value == nil && metric.Delta == nil {
 		http.Error(w, "Value can't be nil", http.StatusBadRequest)
-		return
-	}
-
-	if metric.MType != "gauge" && metric.MType != "counter" {
-		http.Error(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
 		return
 	}
 
@@ -212,7 +209,7 @@ func (s *Server) GetMetric(w http.ResponseWriter, r *http.Request) {
 func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	metric := &serializers.Metric{}
 	// decode input or return error
-	err := json.NewDecoder(r.Body).Decode(metric)
+	err := json.NewDecoder(r.Body).Decode(&metric)
 	if err != nil {
 		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
 		return

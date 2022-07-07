@@ -3,19 +3,46 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/region23/go-musthave-devops/internal/serializers"
 	"github.com/region23/go-musthave-devops/internal/server"
 	"github.com/region23/go-musthave-devops/internal/server/storage"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
 
+func NewMetric(id string, mtype string, v string) serializers.Metric {
+	metric := serializers.Metric{ID: id, MType: mtype}
+
+	if v != "" && v != "none" {
+		if mtype == "counter" {
+			convertedV, err := strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				log.Error().Err(err).Msg("ошибка при парсинге значения счетчика метрики")
+				return metric
+			}
+			metric.Delta = &convertedV
+		} else if mtype == "gauge" {
+			convertedV, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				log.Error().Err(err).Msg("ошибка при парсинге значения метрики")
+				return metric
+			}
+			metric.Value = &convertedV
+		}
+	}
+
+	return metric
+}
+
 func TestUnknownHandlersJSON(t *testing.T) {
-	m1, _ := serializers.NewMetric("testCounter", "unknown", 100)
-	m2, _ := serializers.NewMetric("testCounter", "counter", 100)
+	m1 := NewMetric("testCounter", "unknown", "100")
+	m2 := NewMetric("testCounter", "counter", "100")
 	tests := []struct {
 		name           string
 		endpointURL    string
@@ -62,9 +89,9 @@ func TestUnknownHandlersJSON(t *testing.T) {
 }
 
 func TestGaugeHandlersJSON(t *testing.T) {
-	m1, _ := serializers.NewMetric("testGauge", "gauge", "none")
-	m2, _ := serializers.NewMetric("", "gauge")
-	m3, _ := serializers.NewMetric("testGauge", "gauge", 100)
+	m1 := NewMetric("testGauge", "gauge", "none")
+	m2 := NewMetric("", "gauge", "")
+	m3 := NewMetric("testGauge", "gauge", "100")
 	tests := []struct {
 		name           string
 		endpointURL    string
@@ -117,9 +144,9 @@ func TestGaugeHandlersJSON(t *testing.T) {
 }
 
 func TestCounterHandlersJSON(t *testing.T) {
-	m1, _ := serializers.NewMetric("testCounter", "counter", "none")
-	m2, _ := serializers.NewMetric("", "counter")
-	m3, _ := serializers.NewMetric("testCounter", "counter", 100)
+	m1 := NewMetric("testCounter", "counter", "none")
+	m2 := NewMetric("", "counter", "")
+	m3 := NewMetric("testCounter", "counter", "100")
 
 	tests := []struct {
 		name           string
@@ -213,10 +240,7 @@ func TestCounterJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.onlyValue == false {
 				// получаем текущее значение метрики
-				beforeMetric, err := serializers.NewMetric(tt.metricName, "counter")
-				if err != nil {
-					t.Fatal(err)
-				}
+				beforeMetric := NewMetric(tt.metricName, "counter", "")
 
 				postBody, err := json.Marshal(beforeMetric)
 
@@ -237,7 +261,7 @@ func TestCounterJSON(t *testing.T) {
 					}
 				}
 
-				newMetric, err := serializers.NewMetric(tt.metricName, "counter", tt.value)
+				newMetric := NewMetric(tt.metricName, "counter", fmt.Sprintf("%d", tt.value))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -275,10 +299,7 @@ func TestCounterJSON(t *testing.T) {
 				}
 
 			} else {
-				metric, err := serializers.NewMetric(tt.metricName, "counter")
-				if err != nil {
-					t.Fatal(err)
-				}
+				metric := NewMetric(tt.metricName, "counter", "")
 
 				postBody, err := json.Marshal(metric)
 
@@ -338,10 +359,7 @@ func TestGaugeJSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if !tt.onlyValue {
-				metric, err := serializers.NewMetric(tt.metricName, "gauge", tt.value)
-				if err != nil {
-					t.Fatal(err)
-				}
+				metric := NewMetric(tt.metricName, "gauge", fmt.Sprintf("%f", tt.value))
 
 				postBody, err := json.Marshal(metric)
 
@@ -367,10 +385,7 @@ func TestGaugeJSON(t *testing.T) {
 				}
 				require.Equal(t, tt.value, *newMetric.Value)
 			} else {
-				metric, err := serializers.NewMetric(tt.metricName, "gauge")
-				if err != nil {
-					t.Fatal(err)
-				}
+				metric := NewMetric(tt.metricName, "gauge", "")
 
 				postBody, err := json.Marshal(metric)
 
