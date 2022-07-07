@@ -129,7 +129,7 @@ func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) 
 		// Если хэш не пустой, то сверяем хэши
 		_, err := checkHash(s.Key, &metric, w)
 		if err != nil {
-			JSONError(w, err, http.StatusBadRequest)
+			JSONError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -146,7 +146,8 @@ func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode("Metrics updated")
+	uResp := UserResponse{Success: "Metrics updated"}
+	json.NewEncoder(w).Encode(uResp)
 }
 
 // Ручка обновляющая значение метрики
@@ -178,7 +179,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	// Если хэш не пустой, то сверяем хэши
 	_, err = checkHash(s.Key, &metric, w)
 	if err != nil {
-		JSONError(w, err, http.StatusBadRequest)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -193,7 +194,8 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode("Metric updated")
+	uResp := UserResponse{Success: "Metric updated"}
+	json.NewEncoder(w).Encode(uResp)
 
 	// w.Header().Set("Content-Type", "text/plain")
 	// w.WriteHeader(http.StatusOK)
@@ -245,7 +247,7 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	// Если хэш не пустой, то сверяем хэши
 	metric.Hash, err = checkHash(s.Key, metric, w)
 	if err != nil {
-		JSONError(w, err, http.StatusNotFound)
+		JSONError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -312,9 +314,15 @@ func checkHash(key string, metric *serializers.Metric, w http.ResponseWriter) (h
 	return "", nil
 }
 
-func JSONError(w http.ResponseWriter, err interface{}, code int) {
+type UserResponse struct {
+	Success string `json:"success,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+func JSONError(w http.ResponseWriter, err string, code int) {
+	uResp := UserResponse{Error: err}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(err)
+	json.NewEncoder(w).Encode(uResp)
 }
