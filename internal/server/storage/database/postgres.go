@@ -88,7 +88,7 @@ func (storage *InDatabase) Get(key string) (*serializers.Metric, error) {
 
 }
 
-func (storage *InDatabase) Put(metric *serializers.Metric) error {
+func (storage *InDatabase) Put(metric serializers.Metric) error {
 	// если это counter, то извлекаем из базы последнее значение счетчика и увеличиваем его на значение метрики
 	if metric.MType == "counter" {
 		storage.mu.Lock()

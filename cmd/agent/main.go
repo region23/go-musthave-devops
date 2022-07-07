@@ -75,12 +75,12 @@ func getMainMetrics(metrics *serializers.Metrics) {
 	r1 := rand.New(s1)
 	metrics.Add("RandomValue", "gauge", r1.Float64())
 
+	var val int64 = 1
 	pollCount, exist := metrics.Get("PollCount")
-	var val float64 = 1
 	if exist {
-		val = *pollCount.Value + 1
+		val = *pollCount.Delta + 1
 	}
-	metrics.Add("PollCount", "gauge", val)
+	metrics.Add("PollCount", "counter", val)
 }
 
 func getGopsUitilMetrics(metrics *serializers.Metrics) {
@@ -143,7 +143,7 @@ func sendMetric(metrics *serializers.Metrics) error {
 	log.Debug().Msg(string(body))
 
 	// После отправки сбрасываем счётчик
-	metrics.Add("PollCount", "gauge", 1)
+	metrics.Add("PollCount", "counter", 1)
 
 	return nil
 }

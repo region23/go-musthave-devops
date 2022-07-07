@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 
 	"github.com/rs/zerolog/log"
 )
@@ -22,6 +23,7 @@ type Metric struct {
 type Metrics struct {
 	collection map[string]Metric
 	key        string
+	mu         sync.Mutex
 }
 
 func InitMetrics(key string) *Metrics {
@@ -32,6 +34,9 @@ func InitMetrics(key string) *Metrics {
 }
 
 func (m *Metrics) Get(id string) (metric Metric, exist bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	v, exist := m.collection[id]
 	if exist {
 		return v, true
@@ -41,7 +46,11 @@ func (m *Metrics) Get(id string) (metric Metric, exist bool) {
 }
 
 func (m *Metrics) GetAll() []Metric {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	values := []Metric{}
+
 	for _, value := range m.collection {
 		values = append(values, value)
 	}
@@ -59,6 +68,9 @@ func NewMetric(id string, mtype string, val ...interface{}) (Metric, error) {
 	case int64:
 		metric.Delta = &v
 	case uint64:
+		i := int64(v)
+		metric.Delta = &i
+	case uint32:
 		i := int64(v)
 		metric.Delta = &i
 	case int:
@@ -85,8 +97,8 @@ func NewMetric(id string, mtype string, val ...interface{}) (Metric, error) {
 			}
 		}
 	default:
-		// log.Error().Msg(fmt.Sprintf("не поддерживаемый тип метрики %v", v))
-		// return metric, errors.New("не поддерживаемый тип метрики")
+		log.Error().Msg(fmt.Sprintf("не поддерживаемый тип метрики %v", v))
+		return metric, errors.New("не поддерживаемый тип метрики")
 	}
 
 	return metric, nil
@@ -94,7 +106,8 @@ func NewMetric(id string, mtype string, val ...interface{}) (Metric, error) {
 
 // Добавление метрики в коллекцию
 func (m *Metrics) Add(id string, mtype string, val interface{}) error {
-
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	metric, err := NewMetric(id, mtype, val)
 	if err != nil {
 		return err

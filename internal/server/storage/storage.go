@@ -13,7 +13,7 @@ var (
 
 type Repository interface {
 	Get(key string) (*serializers.Metric, error)
-	Put(metric *serializers.Metric) error
+	Put(metric serializers.Metric) error
 	All() (map[string]serializers.Metric, error)
 	UpdateAll(m map[string]serializers.Metric) error
 }

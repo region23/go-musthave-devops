@@ -26,9 +26,10 @@ func (s *InMemory) Get(key string) (*serializers.Metric, error) {
 	return nil, ErrNotFound
 }
 
-func (s *InMemory) Put(metric *serializers.Metric) error {
+func (s *InMemory) Put(metric serializers.Metric) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	if curMetric, ok := s.m[metric.ID]; ok {
 		if metric.MType == "counter" {
 			*curMetric.Delta = *curMetric.Delta + *metric.Delta
@@ -37,7 +38,7 @@ func (s *InMemory) Put(metric *serializers.Metric) error {
 		}
 	}
 
-	s.m[metric.ID] = *metric
+	s.m[metric.ID] = metric
 	return nil
 }
 

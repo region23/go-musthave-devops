@@ -87,7 +87,7 @@ func (s *Server) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// write metric to repository
-	err = s.storage.Put(&metric)
+	err = s.storage.Put(metric)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
 		return
@@ -130,7 +130,7 @@ func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) 
 		checkHash(s.Key, &metric, w)
 
 		// write metric to repository
-		err = s.storage.Put(&metric)
+		err = s.storage.Put(metric)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
 			return
@@ -146,7 +146,7 @@ func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) 
 
 // Ручка обновляющая значение метрики
 func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
-	var metric *serializers.Metric
+	var metric serializers.Metric
 
 	// decode input or return error
 	err := json.NewDecoder(r.Body).Decode(&metric)
@@ -173,7 +173,7 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Если хэш не пустой, то сверяем хэши
-	checkHash(s.Key, metric, w)
+	checkHash(s.Key, &metric, w)
 
 	// write metric to repository
 	err = s.storage.Put(metric)
