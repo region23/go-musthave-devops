@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -105,42 +106,47 @@ func (s *Server) UpdateBatchMetricsJSON(w http.ResponseWriter, r *http.Request) 
 	// decode input or return error
 	err := json.NewDecoder(r.Body).Decode(&metrics)
 	if err != nil {
-		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
+		JSONError(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
 		return
 	}
 
 	if len(metrics) == 0 {
-		http.Error(w, "Metric name can't be empty", http.StatusBadRequest)
+		JSONError(w, "Metric name can't be empty", http.StatusBadRequest)
 		return
 	}
 
 	for _, metric := range metrics {
 		if metric.Value == nil && metric.Delta == nil {
-			http.Error(w, "Value can't be nil", http.StatusBadRequest)
+			JSONError(w, "Value can't be nil", http.StatusBadRequest)
 			return
 		}
 
 		if metric.MType != "gauge" && metric.MType != "counter" {
-			http.Error(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
+			JSONError(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
 			return
 		}
 
 		// Если хэш не пустой, то сверяем хэши
-		checkHash(s.Key, &metric, w)
+		_, err := checkHash(s.Key, &metric, w)
+		if err != nil {
+			JSONError(w, err, http.StatusBadRequest)
+			return
+		}
 
 		// write metric to repository
 		err = s.storage.Put(metric)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
+			JSONError(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
 			return
 		}
 
 	}
 
 	// response answer
-	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`Metrics updated`))
+	json.NewEncoder(w).Encode("Metrics updated")
 }
 
 // Ручка обновляющая значение метрики
@@ -150,39 +156,48 @@ func (s *Server) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	// decode input or return error
 	err := json.NewDecoder(r.Body).Decode(&metric)
 	if err != nil {
-		http.Error(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
+		JSONError(w, "Decode error! please check your JSON formating.", http.StatusBadRequest)
 		return
 	}
 
 	if metric.MType != "gauge" && metric.MType != "counter" {
-		http.Error(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
+		JSONError(w, "Не поддерживаемый тип метрики", http.StatusNotImplemented)
 		return
 	}
 
 	if metric.ID == "" {
-		http.Error(w, "Metric name can't be empty", http.StatusNotFound)
+		JSONError(w, "Metric name can't be empty", http.StatusNotFound)
 		return
 	}
 
 	if metric.Value == nil && metric.Delta == nil {
-		http.Error(w, "Value can't be nil", http.StatusBadRequest)
+		JSONError(w, "Value can't be nil", http.StatusBadRequest)
 		return
 	}
 
 	// Если хэш не пустой, то сверяем хэши
-	checkHash(s.Key, &metric, w)
+	_, err = checkHash(s.Key, &metric, w)
+	if err != nil {
+		JSONError(w, err, http.StatusBadRequest)
+		return
+	}
 
 	// write metric to repository
 	err = s.storage.Put(metric)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
+		JSONError(w, fmt.Sprintf("Ошибка при сохранении метрики: %v", err.Error()), http.StatusBadRequest)
 		return
 	}
 
 	// response answer
-	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`Metric updated`))
+	json.NewEncoder(w).Encode("Metric updated")
+
+	// w.Header().Set("Content-Type", "text/plain")
+	// w.WriteHeader(http.StatusOK)
+	// w.Write([]byte(`Metric updated`))
 }
 
 // Ручка возвращающая значение метрики
@@ -228,7 +243,11 @@ func (s *Server) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Если хэш не пустой, то сверяем хэши
-	metric.Hash = checkHash(s.Key, metric, w)
+	metric.Hash, err = checkHash(s.Key, metric, w)
+	if err != nil {
+		JSONError(w, err, http.StatusNotFound)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -272,7 +291,7 @@ func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
 }
 
 // Сверяем хэши, а если пустой, то генерим новый
-func checkHash(key string, metric *serializers.Metric, w http.ResponseWriter) (hash string) {
+func checkHash(key string, metric *serializers.Metric, w http.ResponseWriter) (hash string, err error) {
 	if key != "" {
 		var serverGeneratedHash string
 
@@ -284,14 +303,13 @@ func checkHash(key string, metric *serializers.Metric, w http.ResponseWriter) (h
 		}
 
 		if metric.Hash != "" && metric.Hash != "none" && metric.Hash != serverGeneratedHash {
-			http.Error(w, "Hash is not valid", http.StatusBadRequest)
-			return
+			return "", errors.New("hash is not valid")
 		}
 
-		return serverGeneratedHash
+		return serverGeneratedHash, nil
 	}
 
-	return ""
+	return "", nil
 }
 
 func JSONError(w http.ResponseWriter, err interface{}, code int) {
