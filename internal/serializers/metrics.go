@@ -12,6 +12,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type Gauge float64
+type Counter int64
+
 type Metric struct {
 	ID    string   `json:"id"`              // имя метрики
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
@@ -66,18 +69,43 @@ func NewMetric(id string, mtype string, val ...interface{}) (Metric, error) {
 
 	switch v := val[0].(type) {
 	case int64:
-		metric.Delta = &v
+		if mtype == "counter" {
+			metric.Delta = &v
+		} else if mtype == "gauge" {
+			f := float64(v)
+			metric.Value = &f
+		}
 	case uint64:
-		i := int64(v)
-		metric.Delta = &i
+		if mtype == "counter" {
+			i := int64(v)
+			metric.Delta = &i
+		} else if mtype == "gauge" {
+			f := float64(v)
+			metric.Value = &f
+		}
 	case uint32:
-		i := int64(v)
-		metric.Delta = &i
+		if mtype == "counter" {
+			i := int64(v)
+			metric.Delta = &i
+		} else if mtype == "gauge" {
+			f := float64(v)
+			metric.Value = &f
+		}
 	case int:
-		i := int64(v)
-		metric.Delta = &i
+		if mtype == "counter" {
+			i := int64(v)
+			metric.Delta = &i
+		} else if mtype == "gauge" {
+			f := float64(v)
+			metric.Value = &f
+		}
 	case float64:
-		metric.Value = &v
+		if mtype == "counter" {
+			i := int64(v)
+			metric.Delta = &i
+		} else if mtype == "gauge" {
+			metric.Value = &v
+		}
 	case string:
 		if v != "none" {
 			if mtype == "counter" {
