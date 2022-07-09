@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -15,6 +16,7 @@ import (
 )
 
 type InDatabase struct {
+	mu     sync.Mutex
 	dbpool *pgxpool.Pool
 	key    string
 }
@@ -66,12 +68,12 @@ func InitDB(dbpool *pgxpool.Pool) error {
 }
 
 // извлекает метрику из базы данных
-func (storage *InDatabase) Get(key string) (*serializers.Metrics, error) {
+func (storage *InDatabase) Get(key string) (*serializers.Metric, error) {
 	row := storage.dbpool.QueryRow(context.Background(),
 		`SELECT id, metric_type, delta, gauge, hash FROM metrics WHERE id = $1`,
 		key)
 
-	var metric serializers.Metrics
+	var metric serializers.Metric
 
 	err := row.Scan(&metric.ID, &metric.MType, &metric.Delta, &metric.Value, &metric.Hash)
 
@@ -86,10 +88,11 @@ func (storage *InDatabase) Get(key string) (*serializers.Metrics, error) {
 
 }
 
-func (storage *InDatabase) Put(metric *serializers.Metrics) error {
-
+func (storage *InDatabase) Put(metric serializers.Metric) error {
 	// если это counter, то извлекаем из базы последнее значение счетчика и увеличиваем его на значение метрики
 	if metric.MType == "counter" {
+		storage.mu.Lock()
+		defer storage.mu.Unlock()
 		metricFromDB, err := storage.Get(metric.ID)
 		if err != nil && err != pgx.ErrNoRows {
 			return err
@@ -100,7 +103,7 @@ func (storage *InDatabase) Put(metric *serializers.Metrics) error {
 
 			// обновим хэш метрики
 			if storage.key != "" {
-				metric.Hash = serializers.Hash(metric.MType, metric.ID, fmt.Sprintf("%d", *metric.Delta), storage.key)
+				metric.Hash = serializers.Hash(storage.key, metric.ID, metric.MType, fmt.Sprintf("%d", *metric.Delta))
 			}
 		}
 	}
@@ -124,7 +127,7 @@ func (storage *InDatabase) Put(metric *serializers.Metrics) error {
 	return nil
 }
 
-func (storage *InDatabase) All() (map[string]serializers.Metrics, error) {
+func (storage *InDatabase) All() (map[string]serializers.Metric, error) {
 	rows, err := storage.dbpool.Query(context.Background(),
 		`SELECT id, metric_type, delta, gauge, hash FROM metrics`)
 
@@ -132,10 +135,10 @@ func (storage *InDatabase) All() (map[string]serializers.Metrics, error) {
 		return nil, err
 	}
 
-	metrics := make(map[string]serializers.Metrics)
+	metrics := make(map[string]serializers.Metric)
 
 	for rows.Next() {
-		var metric serializers.Metrics
+		var metric serializers.Metric
 		err := rows.Scan(&metric.ID, &metric.MType, &metric.Delta, &metric.Value, &metric.Hash)
 		if err != nil {
 			return nil, err
@@ -148,7 +151,7 @@ func (storage *InDatabase) All() (map[string]serializers.Metrics, error) {
 
 }
 
-func (storage *InDatabase) UpdateAll(m map[string]serializers.Metrics) error {
+func (storage *InDatabase) UpdateAll(m map[string]serializers.Metric) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	tx, err := storage.dbpool.Begin(ctx)

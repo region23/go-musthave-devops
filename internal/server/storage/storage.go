@@ -12,8 +12,8 @@ var (
 )
 
 type Repository interface {
-	Get(key string) (*serializers.Metrics, error)
-	Put(metric *serializers.Metrics) error
-	All() (map[string]serializers.Metrics, error)
-	UpdateAll(m map[string]serializers.Metrics) error
+	Get(key string) (*serializers.Metric, error)
+	Put(metric serializers.Metric) error
+	All() (map[string]serializers.Metric, error)
+	UpdateAll(m map[string]serializers.Metric) error
 }
